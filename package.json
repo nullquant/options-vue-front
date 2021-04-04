@@ -12,9 +12,12 @@
     "bootstrap": "4.6.0",
     "bootstrap-vue": "2.21.2",
     "core-js": "^3.6.5",
+    "node-sass": "4",
+    "sass-loader": "10",
     "trading-vue-js": "1.0.2",
     "tvjs-overlays": "0.4.0",
-    "vue": "2.6.12"
+    "vue": "2.6.12",
+    "vue-template-compiler": "^2.6.12"
   },
   "devDependencies": {
     "@vue/cli-plugin-babel": "~4.5.0",
@@ -37,7 +40,9 @@
     "parserOptions": {
       "parser": "babel-eslint"
     },
-    "rules": {}
+    "rules": {
+      "no-unused-vars": "off"
+    }
   },
   "browserslist": [
     "> 1%",

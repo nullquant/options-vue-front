@@ -220,7 +220,7 @@ export default {
     window.addEventListener("resize", this.onResize);
     this.onResize();
   },
-  beforeDestroy() {
+  beforeMount() {
     window.removeEventListener("resize", this.onResize);
   },
 };
