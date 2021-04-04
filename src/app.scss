@@ -1,0 +1,33 @@
+// Define variable defaults
+//$body-bg: #000;
+//$body-color: #111;
+
+
+
+// Then import Bootstrap an BootstrapVue SCSS files (order is important)
+@import '~bootstrap/scss/bootstrap.scss';
+@import '~bootstrap-vue/src/index.scss';
+
+.custom-select {
+  color: #fff;
+  background: #343A40;
+}
+
+/** {
+  margin: 0;
+  padding: 0;
+}*/
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  color: #fff;
+  overflow-y: hidden;
+}
+
+a {
+  text-decoration: none;
+}
