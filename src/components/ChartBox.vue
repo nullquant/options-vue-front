@@ -27,8 +27,8 @@
 </template>
 
 <script>
-import { TradingVue, DataCube } from "trading-vue-js";
-import Overlays from "tvjs-overlays";
+import { TradingVue, DataCube, Channel } from "trading-vue-js";
+//import Overlays from "tvjs-overlays";
 
 export default {
   name: "Chartbox",
@@ -50,14 +50,13 @@ export default {
   },
   methods: {
     updateSelectedScale(payload) {
-      this.dataCube.set("chart.data", this.$props.ohlcv[this.selectedScale]);
+      this.dataCube.set("chart.data", this.$props.ohlcv["data"][this.selectedScale]);
       this.$refs.tradingVue.resetChart();
-      console.log(this.overlays[0]);
     },
   },
   watch: {
     dataChanged(newData, oldData) {
-      this.updateSelectedScale(null);
+      this.updateSelectedScale();
     },
   },
   computed: {
@@ -77,7 +76,7 @@ export default {
   },
   data() {
     return {
-      overlays: [Overlays["KC"]],
+      overlays: Channel,
       dataCube: new DataCube({
         chart: {},
         onchart: [
@@ -87,7 +86,7 @@ export default {
             data: [],
             settings: {
               length: 20,
-              mult: 2.25,
+              mult: 2.00,
               use_tr: true,
               color: "#2cc6c9ab",
               backColor: "#2cc6c90a",

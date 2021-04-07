@@ -42,29 +42,31 @@ export default {
         return;
       }
       const query =
-        "https://iss.moex.com/iss/securities/" +
-        newFutures.substring(0, 4) +
-        ".json";
+        "http://localhost:5000/api/v1/security?sec=" +
+        newFutures.substring(0, 4);
       this.$axios
         .get(query)
         .then((response) => {
-          const cDate = new Date(this.$props.choosenDate);
-          const eDate = new Date(response.data["description"]["data"][6][2]);
-          const remain = Math.floor(
-            (eDate.getTime() - cDate.getTime()) / (1000 * 60 * 60 * 24)
-          );
-          this.expirationDate =
+          if (response.status === 200) {
+            const cDate = new Date(this.$props.choosenDate);
+            const eDate = new Date(response.data[0][6]);
+            const remain = Math.floor(
+              (eDate.getTime() - cDate.getTime()) / (1000 * 60 * 60 * 24)
+            );
+            this.expirationDate =
             eDate
               .toLocaleDateString(undefined, {
                 day: "numeric",
                 month: "long",
                 year: "numeric",
               })
-              .slice(0, -3) +
-            " [" +
-            remain +
-            "]";
-          this.$emit("selected", newFutures.substring(0, 4));
+              .slice(0, -3) + " [" + remain + "]";
+            this.$emit("selected", newFutures.substring(0, 4));
+          } else {
+            console.log("Got error: " + response.data);
+            this.$emit("selected", "");
+            return;
+          }
         })
         .catch((error) => {
           console.log(error);
@@ -72,60 +74,47 @@ export default {
         });
     },
     choosenDate(newDate, oldDate) {
-      const query =
-        "https://iss.moex.com/iss/history/engines/futures/markets/forts/securities.json?date=" +
-        newDate +
-        "&iss.meta=off";
-      const axios = this.$axios;
-      let index = 0;
-      let responseData = [];
-      function request(pointer) {
-        return axios
-          .get(query + "&start=" + index)
+      const query = "http://localhost:5000/api/v1/futures?date=" + newDate;
+      this.$axios.get(query)
           .then((response) => {
-            responseData = responseData.concat(
-              response.data["history"]["data"]
-            );
-            index += response.data["history.cursor"]["data"][0][2];
-            if (index >= response.data["history.cursor"]["data"][0][1]) {
-              console.log("Got futures data [" + responseData.length + "]");
-              pointer.filterFutures(responseData);
-              return "done";
-            }
-            return setTimeout(() => request(pointer), 100);
+              if (response.status === 200) {
+                console.log("Got futures data [" + response.data.length + "]");
+                this.filterFutures(response.data);
+                return "done";
+              }
+              this.selectedFutures = "";
+              console.log("Got error: " + response.data);
+              return "error";
           })
           .catch((error) => {
-            pointer.selectedFutures = "";
+            this.selectedFutures = "";
             console.log(error);
             return "error";
           });
-      }
-      return request(this);
-    },
+    }
   },
   methods: {
     filterFutures(responseData) {
       let found = responseData.filter(function (future) {
         return (
-          future[2][0] === "S" &&
-          future[2][1] === "i" &&
-          future[2].length === 4 &&
-          future[9] > 0
+          future[1][0] === "S" &&
+          future[1][1] === "i" &&
+          future[1].length === 4
         );
       });
       found.sort(function (a, b) {
-        const dy = parseFloat(a[2][3]) - parseFloat(b[2][3]);
-        if (dy === 0) return a[2][2].localeCompare(b[2][2]);
+        const dy = parseFloat(a[1][3]) - parseFloat(b[1][3]);
+        if (dy === 0) return a[1][2].localeCompare(b[1][2]);
         return dy;
       });
       this.futuresArray = [];
       for (let i = 0; i < found.length; i++) {
         let month = "";
-        switch (found[i][2][2]) {
+        switch (found[i][1][2]) {
           case "F":
             month = "-1.";
             break;
-          case "GF":
+          case "G":
             month = "-2.";
             break;
           case "H":
@@ -162,7 +151,7 @@ export default {
             month = ".";
         }
         this.futuresArray.push(
-          found[i][2] + "  (" + month + "2" + found[i][2][3] + ")"
+          found[i][1] + "  (" + month + "2" + found[i][1][3] + ")"
         );
       }
       this.selectedFutures = "";
