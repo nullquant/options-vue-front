@@ -41,14 +41,13 @@ import Chartbox from "./ChartBox.vue";
 
 export default {
   name: "Multichart",
-  props: ["night", "security", "scale", "time"],
+  props: ["night", "security", "time"],
   components: {
     Chartbox,
   },
   data() {
     return {
       securityName: "Si",
-      scales: [],
       selectedTime: "10:00",
       ohlcv: { "data": [[], [], [], [], [], [], []], 
                "KC": [[], [], [], [], [], [], []] },
@@ -59,7 +58,13 @@ export default {
   },
   watch: {
     security(newFutures, oldFutures) {
-      if (newFutures == null || newFutures.length === 0) return;
+      if (newFutures == null || newFutures.length === 0 || 
+        newFutures[0] == null || newFutures[0].length == 0) {
+        this.ohlcv = { "data": [[], [], [], [], [], [], []], 
+               "KC": [[], [], [], [], [], [], []] }
+        this.dataChanged = !this.dataChanged;
+        return;
+      }
       this.securityName = newFutures[0];
       const query =
         "http://localhost:5000/api/v1/futures/candles?sec=" +
@@ -78,9 +83,6 @@ export default {
         .catch((error) => {
           console.log(error);
         });
-    },
-    scale(newScales, oldScales) {
-      console.log("MC:" + newScales);
     },
     time(newTime, oldTime) {
       console.log("MC:" + newTime);

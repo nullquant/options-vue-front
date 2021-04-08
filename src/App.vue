@@ -3,14 +3,12 @@
     <aside class="sidenav">
       <SideBar
         @futures="updateFutures"
-        @scale="updateScale"
         @time="updateTime"
       />
     </aside>
     <main class="main">
       <Multichart
         :security="choosenFutures"
-        :scale="choosenScale"
         :time="choosenTime"
       />
     </main>
@@ -31,20 +29,16 @@ export default {
   data() {
     return {
       choosenFutures: [],
-      choosenScale: [],
       choosenTime: "10:00:00",
     };
   },
   methods: {
     updateFutures(payload) {
-      if (payload) this.choosenFutures = payload;
+      this.choosenFutures = payload;
     },
     updateTime(payload) {
       if (payload) this.choosenTime = payload;
-    },
-    updateScale(payload) {
-      if (payload) this.choosenScale = payload;
-    },
+    }
   },
 };
 </script>

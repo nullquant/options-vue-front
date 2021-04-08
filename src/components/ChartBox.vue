@@ -51,6 +51,7 @@ export default {
   methods: {
     updateSelectedScale(payload) {
       this.dataCube.set("chart.data", this.$props.ohlcv["data"][this.selectedScale]);
+      this.dataCube.set('onchart.KC.data', this.$props.ohlcv["KC"][this.selectedScale])
       this.$refs.tradingVue.resetChart();
     },
   },

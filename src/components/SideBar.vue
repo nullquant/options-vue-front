@@ -1,5 +1,14 @@
 <template>
   <div class="sidebar">
+    <div class="radio-group">
+        <b-form-radio-group class="radio-buttons"
+          id="asset-buttons"
+          v-model="baseAsset"
+          :options="baseAssetArray"
+          name="base-asset-buttons"
+          buttons
+        ></b-form-radio-group>
+    </div>
     <div class="datepicker">
       <b-form-datepicker
         id="dpicker"
@@ -16,7 +25,20 @@
       ></b-form-datepicker>
     </div>
     <div class="sidebar-item">
-      <Future :choosenDate="choosenDate" @selected="updateFutures" />
+      <Derivative 
+        label="Futures:"
+        type="futures"
+        :baseAsset="baseAsset"
+        :choosenDate="choosenDate" 
+        @selected="updateFutures" />
+    </div>
+    <div class="sidebar-item">
+      <Derivative 
+        label="Options:"
+        type="options"
+        :baseAsset="baseAsset"
+        :choosenDate="choosenDate" 
+        @selected="updateOptions" />
     </div>
     <div class="timepicker">
       <b-form-timepicker
@@ -32,16 +54,22 @@
 </template>
 
 <script>
-import Future from "./Future.vue";
+import Derivative from "./Derivative.vue";
 
 export default {
   name: "SideBar",
-  components: { Future },
-  emits: ["futures", "scale", "time"],
+  components: { Derivative },
+  emits: ["futures", "options", "time"],
   data() {
     return {
       choosenDate: "",
       choosenTime: "10:00:00",
+      baseAsset: "Si",
+      baseAssetArray: [
+        { text: "USDRUB", value: "Si" },
+        { text: "RTS", value: "RI" },
+        { text: "Brent", value: "BR" }
+      ]      
     };
   },
   methods: {
@@ -50,16 +78,9 @@ export default {
       if (payload) this.$emit("time", this.choosenTime);
     },
     updateFutures(payload) {
-      if (payload)
-        this.$emit("futures", [payload, this.choosenDate, this.choosenTime]);
+      this.$emit("futures", [payload, this.choosenDate, this.choosenTime]);
     },
-    updateSelectedScale(payload) {
-      this.$emit("scale", [
-        this.selectedScale1,
-        this.selectedScale2,
-        this.selectedScale3,
-      ]);
-    },
+    updateOptions(payload) { }
   },
 };
 </script>
@@ -72,10 +93,24 @@ export default {
   width: 100%;
 }
 
-.datepicker {
+.radio-group {
   display: flex;
   align-items: center;
   padding: 20px 10px 10px 10px;
+  width: 100%;
+}
+
+.radio-buttons {
+  display: flex;
+  align-items: center;
+  padding: 0px;
+  width: 100%;
+}
+
+.datepicker {
+  display: flex;
+  align-items: center;
+  padding: 10px 10px 10px 10px;
   width: 100%;
 }
 
