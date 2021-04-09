@@ -5,6 +5,7 @@
           id="asset-buttons"
           v-model="baseAsset"
           :options="baseAssetArray"
+          @input="updateBaseAsset"
           name="base-asset-buttons"
           buttons
         ></b-form-radio-group>
@@ -32,14 +33,6 @@
         :choosenDate="choosenDate" 
         @selected="updateFutures" />
     </div>
-    <div class="sidebar-item">
-      <Derivative 
-        label="Options:"
-        type="options"
-        :baseAsset="baseAsset"
-        :choosenDate="choosenDate" 
-        @selected="updateOptions" />
-    </div>
     <div class="timepicker">
       <b-form-timepicker
         id="tpicker"
@@ -59,7 +52,7 @@ import Derivative from "./Derivative.vue";
 export default {
   name: "SideBar",
   components: { Derivative },
-  emits: ["futures", "options", "time"],
+  emits: ["futures", "options", "date", "time", "base-asset"],
   data() {
     return {
       choosenDate: "",
@@ -73,12 +66,17 @@ export default {
     };
   },
   methods: {
-    updateDate(payload) {},
+    updateDate(payload) {
+      this.$emit("date", this.choosenDate);
+    },
     updateTime(payload) {
       if (payload) this.$emit("time", this.choosenTime);
     },
     updateFutures(payload) {
       this.$emit("futures", [payload, this.choosenDate, this.choosenTime]);
+    },
+    updateBaseAsset(payload) {
+      this.$emit("base-asset", this.baseAsset);
     },
     updateOptions(payload) { }
   },

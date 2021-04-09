@@ -83,6 +83,7 @@ export default {
   },
   methods: {
     getDerivatives() {
+      if (this.choosenDate == null || this.choosenDate.length === 0) return;
       const query = "http://localhost:5000/api/v1/" + this.$props.type + 
         "?date=" + this.choosenDate + "&q=" + this.baseAsset;
       this.$axios.get(query)

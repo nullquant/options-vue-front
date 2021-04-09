@@ -2,15 +2,23 @@
   <div class="grid-container">
     <aside class="sidenav">
       <SideBar
+        @base-asset="updateBaseAsset"
+        @date="updateDate"
         @futures="updateFutures"
         @time="updateTime"
       />
     </aside>
     <main class="main">
+      <div>
       <Multichart
         :security="choosenFutures"
         :time="choosenTime"
       />
+      <options-table
+        :choosenDate="choosenDate"
+        :baseAsset="baseAsset"
+      />
+      </div>
     </main>
     <footer class="footer"></footer>
   </div>
@@ -19,25 +27,35 @@
 <script>
 import Multichart from "./components/Multichart.vue";
 import SideBar from "./components/SideBar.vue";
+import OptionsTable from "./components/OptionsTable.vue";
 
 export default {
   name: "App",
   components: {
     Multichart,
     SideBar,
+    OptionsTable,
   },
   data() {
     return {
+      choosenDate: "",
       choosenFutures: [],
+      baseAsset: "Si",
       choosenTime: "10:00:00",
     };
   },
   methods: {
+    updateDate(payload) {
+      this.choosenDate = payload;
+    },
     updateFutures(payload) {
       this.choosenFutures = payload;
     },
     updateTime(payload) {
       if (payload) this.choosenTime = payload;
+    },
+    updateBaseAsset(payload) {
+      this.baseAsset = payload;
     }
   },
 };
