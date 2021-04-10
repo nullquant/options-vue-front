@@ -10,8 +10,36 @@
 
 .custom-select {
   color: #fff;
-  background: #343A40;
+  background: #1E222D;
 }
+
+.table-dark {
+  color: #fff;
+  background: #131722;
+  border-color: #434651;
+  text-align: center;
+}
+
+.table .thead-dark th {
+  color: #fff;
+  background-color: #1E222D;
+  border-color: #434651;
+}
+
+.nav-tabs {
+  border-bottom: 1px solid #434651;
+}
+
+.nav-tabs .nav-link {
+  color: #fff;
+}
+
+.nav-tabs .nav-link.active {
+  color: #fff;
+  background-color: #545b62;
+  border-color: #434651;
+}
+
 
 /** {
   margin: 0;

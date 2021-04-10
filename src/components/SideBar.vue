@@ -72,11 +72,11 @@ export default {
     updateTime(payload) {
       if (payload) this.$emit("time", this.choosenTime);
     },
-    updateFutures(payload) {
-      this.$emit("futures", [payload, this.choosenDate, this.choosenTime]);
-    },
     updateBaseAsset(payload) {
       this.$emit("base-asset", this.baseAsset);
+    },
+    updateFutures(payload) {
+      this.$emit("futures", [payload, this.choosenDate, this.choosenTime]);
     },
     updateOptions(payload) { }
   },

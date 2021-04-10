@@ -11,7 +11,19 @@
     </div>
     <div class="table">
       <b-table 
-        :items="items"></b-table>
+        :fields="fields"
+        :items="optionTable"
+        :dark="true"
+        head-variant="dark"
+      >
+        <template #thead-top>
+          <b-tr>
+            <b-th colspan="3">Calls</b-th>
+            <b-th></b-th>
+            <b-th colspan="3">Puts</b-th>
+          </b-tr>
+        </template>      
+      </b-table>
     </div>
   </div>
 </template>
@@ -25,6 +37,27 @@ export default {
     return {
       choosedOption: -1,
       optionsArray: [],
+      fields: [
+          { key: 'call_bid', label: 'Bid' },
+          { key: 'call_last', label: 'Last' },
+          { key: 'call_ask', label: 'Ask' },
+          { key: 'strike', label: 'Strike' },
+          { key: 'put_bid', label: 'Bid' },
+          { key: 'put_last', label: 'Last' },
+          { key: 'put_ask', label: 'Ask' }
+      ],
+      optionTable: [
+          { call_bid: '', call_last: 1200, call_ask: '', strike: 75500, put_bid: '', put_last: 1200, put_ask: ''},
+          { call_bid: '', call_last: 1200, call_ask: '', strike: 76000, put_bid: '', put_last: 1200, put_ask: ''},
+          { call_bid: '', call_last: 1200, call_ask: '', strike: 76500, put_bid: '', put_last: 1200, put_ask: ''},
+          { call_bid: '', call_last: 1200, call_ask: '', strike: 77000, put_bid: '', put_last: 1200, put_ask: ''},
+          { call_bid: '', call_last: 1200, call_ask: '', strike: 77500, put_bid: '', put_last: 1200, put_ask: ''},
+          { call_bid: '', call_last: 1200, call_ask: '', strike: 78000, put_bid: '', put_last: 1200, put_ask: ''},
+          { call_bid: '', call_last: 1200, call_ask: '', strike: 78500, put_bid: '', put_last: 1200, put_ask: ''},
+          { call_bid: '', call_last: 1200, call_ask: '', strike: 79000, put_bid: '', put_last: 1200, put_ask: ''},
+          { call_bid: '', call_last: 1200, call_ask: '', strike: 79500, put_bid: '', put_last: 1200, put_ask: ''},
+          { call_bid: '', call_last: 1200, call_ask: '', strike: 80000, put_bid: '', put_last: 1200, put_ask: ''}
+        ]
     }
   },
   watch: {

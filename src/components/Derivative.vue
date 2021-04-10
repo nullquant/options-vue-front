@@ -1,6 +1,6 @@
 <template>
   <div class="container">
-    <div class="row align-items-center" style="padding: 0px 0px 10px 0px">
+    <div class="row align-items-center" style="padding: 0px 0px 0px 0px">
       <div class="col-sm px-1">{{label}}</div>
       <div class="col-m px-1">
         <b-form-select
@@ -11,7 +11,7 @@
     </div>
     <div
       class="row align-items-center"
-      style="padding: 10px 0px 0px 0px"
+      style="padding: 20px 0px 0px 0px"
       v-if="selectedDerivative"
     >
       <div class="col-sm px-1">Expiration</div>

@@ -20,7 +20,7 @@
         size="sm"
         v-model="selectedScale"
         :options="scalesArray"
-        @input="updateSelectedScale"
+        @input="updateScale"
       ></b-form-select>
     </div>
   </div>
@@ -49,15 +49,16 @@ export default {
     this.selectedScale = this.$props.scale;
   },
   methods: {
-    updateSelectedScale(payload) {
+    updateScale(payload) {
       this.dataCube.set("chart.data", this.$props.ohlcv["data"][this.selectedScale]);
+      this.dataCube.set("chart.tf", this.scalesArray[this.selectedScale]["text"]);
       this.dataCube.set('onchart.KC.data', this.$props.ohlcv["KC"][this.selectedScale])
       this.$refs.tradingVue.resetChart();
     },
   },
   watch: {
     dataChanged(newData, oldData) {
-      this.updateSelectedScale();
+      this.updateScale();
     },
   },
   computed: {
@@ -106,7 +107,6 @@ export default {
         { value: 6, text: "1D" },
       ],
       selectedScale: 0,
-      buttons: ["display", "settings", "remove"],
     };
   },
   /*

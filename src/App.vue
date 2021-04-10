@@ -2,22 +2,29 @@
   <div class="grid-container">
     <aside class="sidenav">
       <SideBar
-        @base-asset="updateBaseAsset"
         @date="updateDate"
-        @futures="updateFutures"
         @time="updateTime"
+        @base-asset="updateBaseAsset"
+        @futures="updateFutures"
       />
     </aside>
     <main class="main">
       <div>
-      <Multichart
-        :security="choosenFutures"
-        :time="choosenTime"
-      />
-      <options-table
-        :choosenDate="choosenDate"
-        :baseAsset="baseAsset"
-      />
+        <Multichart
+          :security="choosenFutures"
+          :time="choosenTime"
+        />
+        <b-tabs style="padding: 20px 0px 00px 00px">
+          <b-tab title="Options Table">
+            <options-table
+              :choosenDate="choosenDate"
+              :baseAsset="baseAsset"
+            />
+          </b-tab>
+          <b-tab title="Strategy">
+            <p>Strategy here...</p>
+          </b-tab>
+        </b-tabs>
       </div>
     </main>
     <footer class="footer"></footer>
@@ -39,23 +46,23 @@ export default {
   data() {
     return {
       choosenDate: "",
-      choosenFutures: [],
+      choosenTime: "10:00",
       baseAsset: "Si",
-      choosenTime: "10:00:00",
+      choosenFutures: [],
     };
   },
   methods: {
     updateDate(payload) {
       this.choosenDate = payload;
     },
-    updateFutures(payload) {
-      this.choosenFutures = payload;
-    },
     updateTime(payload) {
-      if (payload) this.choosenTime = payload;
+      this.choosenTime = payload;
     },
     updateBaseAsset(payload) {
       this.baseAsset = payload;
+    },
+    updateFutures(payload) {
+      this.choosenFutures = payload;
     }
   },
 };
