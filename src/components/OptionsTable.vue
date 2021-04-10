@@ -32,7 +32,7 @@
 export default {
   name: "OptionsPanel",
   components: {},
-  props: ["choosenDate", "baseAsset"],
+  props: ["choosenDate", "baseAsset", "choosenTime"],
   data() {
     return {
       choosedOption: -1,

@@ -1,4 +1,4 @@
-# t
+# Frontend for Option trading on MOEX based on Vue
 
 ## Project setup
 ```

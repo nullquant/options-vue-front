@@ -19,6 +19,7 @@
             <options-table
               :choosenDate="choosenDate"
               :baseAsset="baseAsset"
+              :choosenTime="choosenTime"
             />
           </b-tab>
           <b-tab title="Strategy">
@@ -27,7 +28,6 @@
         </b-tabs>
       </div>
     </main>
-    <footer class="footer"></footer>
   </div>
 </template>
 
@@ -72,10 +72,9 @@ export default {
 .grid-container {
   display: grid;
   grid-template-columns: 280px 1fr;
-  grid-template-rows: 1fr 50px;
+  grid-template-rows: 1fr;
   grid-template-areas:
-    "sidenav main"
-    "sidenav footer";
+    "sidenav main";
   height: 100vh;
 }
 
