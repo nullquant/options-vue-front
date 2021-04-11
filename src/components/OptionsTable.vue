@@ -4,15 +4,16 @@
         <b-form-radio-group class="radio-buttons"
           id="chain-buttons"
           v-model="choosedOption"
-          :options="optionsArray"
+          :options="optionsExpirationArray"
           name="option-chain-buttons"
           buttons
         ></b-form-radio-group>
     </div>
     <div class="table">
       <b-table 
+        ref="otable"
         :fields="fields"
-        :items="optionTable"
+        :items="getOptionTable"
         :dark="true"
         head-variant="dark"
       >
@@ -36,17 +37,21 @@ export default {
   data() {
     return {
       choosedOption: -1,
-      optionsArray: [],
+      optionsDescriptionArray: [],
+      optionsExpirationArray: [],
+      optionsData: [],
       fields: [
           { key: 'call_bid', label: 'Bid' },
           { key: 'call_last', label: 'Last' },
           { key: 'call_ask', label: 'Ask' },
-          { key: 'strike', label: 'Strike' },
+          { key: 'strike', label: 'Strike', 
+            tdClass: 'strike-border' },
           { key: 'put_bid', label: 'Bid' },
           { key: 'put_last', label: 'Last' },
           { key: 'put_ask', label: 'Ask' }
       ],
-      optionTable: [
+      optionTable: [],
+      optionTable2: [
           { call_bid: '', call_last: 1200, call_ask: '', strike: 75500, put_bid: '', put_last: 1200, put_ask: ''},
           { call_bid: '', call_last: 1200, call_ask: '', strike: 76000, put_bid: '', put_last: 1200, put_ask: ''},
           { call_bid: '', call_last: 1200, call_ask: '', strike: 76500, put_bid: '', put_last: 1200, put_ask: ''},
@@ -69,8 +74,8 @@ export default {
               if (response.status === 200) {
                 console.log("Got options data [" + 
                   response.data.length + "]");
-                this.optionsArray = [];
-                console.log(response.data)
+                this.optionsExpirationArray = [];
+                this.optionsDescriptionArray = response.data;
                 for (let i = 0; i < response.data.length; i++) {
                   const cDate = new Date(this.$props.choosenDate);
                   const eDate = new Date(response.data[i][5]);
@@ -83,27 +88,101 @@ export default {
                       year: "numeric",
                     })
                     .slice(0, -3) + " [" + remain + "]";
-                  this.optionsArray.push(
+                  this.optionsExpirationArray.push(
                     { text: textDate, value: i});
                 }
                 this.choosedOption = 0;
-                //this.$emit("selected", "");
+                this.optionsData = new Array(this.optionsDescriptionArray.length);
+                this.$refs.otable.refresh()
                 return "done";
               }
-              this.choosedOption = "";
-              this.optionsArray = [];
+              this.choosedOption = -1;
+              this.optionsExpirationArray = [];
+              this.optionsDescriptionArray = [];
+              this.optionsData = [];
               console.log("Got error: " + response.data);
               return "error";
           })
           .catch((error) => {
-            this.choosedOptions = "";
-            this.optionsArray = [];
+            this.choosedOptions = -1;
+            this.optionsExpirationArray = [];
+            this.optionsDescriptionArray = [];
+            this.optionsData = [];
             console.log(error);
             return "error";
           });
     },
+    choosenOption(newOption, oldOption) {
+      this.$refs.otable.refresh()
+    },
+    choosenTime(newTime, oldTime) {
+      
+    }
   },
   methods: {
+    getOptionTable(ctx, callback) {
+      // No date selected or error
+      if (this.choosedOption < 0) {
+        return [];
+      }
+      // No data for selected option
+      if (!this.optionsData[this.choosedOptions]) {
+        const query = "http://localhost:5000/api/v1/options/candles?sec=" + 
+          this.optionsDescriptionArray[this.choosedOption][1] + "&date=" + 
+          this.choosenDate;
+        this.$axios.get(query)
+          .then((response) => {
+            if (response.status != 200) {
+              console.log("Got error: " + response.data);
+              callback([]);
+            } else {
+              this.optionsData[this.choosedOption] = response.data;
+              console.log("Got options candles");
+              const table = this.parseOptionData(this.optionsData[this.choosedOption]);
+              console.log(table);
+              callback(table);
+            }
+          })
+          .catch((error) => {
+            console.log("Got error:" + error);
+            return [];
+          });
+      } else {
+        callback(this.parseOptionData(this.optionsData[this.choosedOption]));
+        return [];
+      }
+      return null;
+    },
+    parseOptionData(data) {
+      let table = []
+      for (let strike in data["calls"]) {
+        console.log(strike);
+        table.push({strike: strike, call_bid:"", call_last:"", call_ask: "", 
+          put_bid:"", put_last:"", put_ask: "" });
+      }
+      return table;
+    },
+    getTimeEpoch(newTime) {
+      if (this.fullData["data"].length === 0) return -1;
+      const lastEpoch = this.fullData["data"][0][this.fullData["data"][0].length-1][0];
+      const lastDate = new Date(lastEpoch);
+      const strArray = newTime.split(":");
+      lastDate.setUTCHours(parseInt(strArray[0]));
+      lastDate.setUTCMinutes(parseInt(strArray[1]));
+      return lastDate.valueOf();
+    },
+    findIndex(dataArray, epoch) {
+      let left = 0;
+      let right = dataArray.length;
+      let index = Math.floor((left + right) / 2);
+      while(right - left > 1) {
+        if (dataArray[index][0] === epoch) return index;
+        if (dataArray[index][0] < epoch) left = index;
+        else right = index;
+        index = Math.floor((left + right) / 2);
+      }
+      return right;
+    }
   }
 }
 </script>
@@ -123,5 +202,7 @@ export default {
   padding: 0px;
   width: 100%;
 }
+
+
 
 </style>

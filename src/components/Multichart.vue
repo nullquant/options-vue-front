@@ -48,7 +48,7 @@ export default {
   data() {
     return {
       securityName: "Si",
-      selectedTime: "10:00",
+      //selectedTime: "10:00",
       fullData: { "data": [[], [], [], [], [], [], []], 
                "KC": [[], [], [], [], [], [], []] },
       ohlcv: { "data": [[], [], [], [], [], [], []], 
