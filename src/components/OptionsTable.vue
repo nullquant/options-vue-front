@@ -16,6 +16,7 @@
         :items="getOptionTable"
         :dark="true"
         head-variant="dark"
+        small
       >
         <template #thead-top>
           <b-tr>
@@ -51,18 +52,6 @@ export default {
           { key: 'put_ask', label: 'Ask' }
       ],
       optionTable: [],
-      optionTable2: [
-          { call_bid: '', call_last: 1200, call_ask: '', strike: 75500, put_bid: '', put_last: 1200, put_ask: ''},
-          { call_bid: '', call_last: 1200, call_ask: '', strike: 76000, put_bid: '', put_last: 1200, put_ask: ''},
-          { call_bid: '', call_last: 1200, call_ask: '', strike: 76500, put_bid: '', put_last: 1200, put_ask: ''},
-          { call_bid: '', call_last: 1200, call_ask: '', strike: 77000, put_bid: '', put_last: 1200, put_ask: ''},
-          { call_bid: '', call_last: 1200, call_ask: '', strike: 77500, put_bid: '', put_last: 1200, put_ask: ''},
-          { call_bid: '', call_last: 1200, call_ask: '', strike: 78000, put_bid: '', put_last: 1200, put_ask: ''},
-          { call_bid: '', call_last: 1200, call_ask: '', strike: 78500, put_bid: '', put_last: 1200, put_ask: ''},
-          { call_bid: '', call_last: 1200, call_ask: '', strike: 79000, put_bid: '', put_last: 1200, put_ask: ''},
-          { call_bid: '', call_last: 1200, call_ask: '', strike: 79500, put_bid: '', put_last: 1200, put_ask: ''},
-          { call_bid: '', call_last: 1200, call_ask: '', strike: 80000, put_bid: '', put_last: 1200, put_ask: ''}
-        ]
     }
   },
   watch: {
@@ -116,7 +105,7 @@ export default {
       this.$refs.otable.refresh()
     },
     choosenTime(newTime, oldTime) {
-      
+      this.$refs.otable.refresh()
     }
   },
   methods: {
@@ -127,8 +116,9 @@ export default {
       }
       // No data for selected option
       if (!this.optionsData[this.choosedOptions]) {
-        const query = "http://localhost:5000/api/v1/options/candles?sec=" + 
-          this.optionsDescriptionArray[this.choosedOption][1] + "&date=" + 
+        const query = "http://localhost:5000/api/v1/options/tables?sec=" + 
+          this.optionsDescriptionArray[this.choosedOption][1] + "&asset=" + 
+          this.optionsDescriptionArray[this.choosedOption][3] + "&date=" + 
           this.choosenDate;
         this.$axios.get(query)
           .then((response) => {
@@ -139,7 +129,6 @@ export default {
               this.optionsData[this.choosedOption] = response.data;
               console.log("Got options candles");
               const table = this.parseOptionData(this.optionsData[this.choosedOption]);
-              console.log(table);
               callback(table);
             }
           })
@@ -154,30 +143,24 @@ export default {
       return null;
     },
     parseOptionData(data) {
-      let table = []
-      for (let strike in data["calls"]) {
-        console.log(strike);
-        table.push({strike: strike, call_bid:"", call_last:"", call_ask: "", 
-          put_bid:"", put_last:"", put_ask: "" });
-      }
-      return table;
+      const newEpoch = this.getTimeEpoch(data[0]["epoch"], this.$props.choosenTime);
+      const index = this.findIndex(data, newEpoch);
+      return data[index]["option_table"];
     },
-    getTimeEpoch(newTime) {
-      if (this.fullData["data"].length === 0) return -1;
-      const lastEpoch = this.fullData["data"][0][this.fullData["data"][0].length-1][0];
-      const lastDate = new Date(lastEpoch);
+    getTimeEpoch(oldEpoch, newTime) {
+      const lastDate = new Date(oldEpoch);
       const strArray = newTime.split(":");
       lastDate.setUTCHours(parseInt(strArray[0]));
       lastDate.setUTCMinutes(parseInt(strArray[1]));
       return lastDate.valueOf();
     },
-    findIndex(dataArray, epoch) {
+    findIndex(data, epoch) {
       let left = 0;
-      let right = dataArray.length;
+      let right = data.length;
       let index = Math.floor((left + right) / 2);
       while(right - left > 1) {
-        if (dataArray[index][0] === epoch) return index;
-        if (dataArray[index][0] < epoch) left = index;
+        if (data[index]["epoch"] === epoch) return index;
+        if (data[index]["epoch"] < epoch) left = index;
         else right = index;
         index = Math.floor((left + right) / 2);
       }
