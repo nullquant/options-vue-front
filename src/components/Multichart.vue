@@ -115,7 +115,7 @@ export default {
       this.ohlcv = { "data": dataArray, "KC": KCArray };
     },
     getTimeEpoch(newTime) {
-      if (this.fullData["data"].length === 0) return -1;
+      if (this.fullData["data"][0].length === 0) return -1;
       const lastEpoch = this.fullData["data"][0][this.fullData["data"][0].length-1][0];
       const lastDate = new Date(lastEpoch);
       const strArray = newTime.split(":");
@@ -133,7 +133,7 @@ export default {
         else right = index;
         index = Math.floor((left + right) / 2);
       }
-      return right;
+      return left;
     }
   },
   computed: {

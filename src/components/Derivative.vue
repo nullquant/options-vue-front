@@ -44,7 +44,6 @@ export default {
       const query =
         "http://localhost:5000/api/v1/security?sec=" +
         newDerivative.substring(0, 4);
-      console.log(query)
       this.$axios
         .get(query)
         .then((response) => {
@@ -92,7 +91,6 @@ export default {
                 console.log("Got "+ this.$props.type +" data [" + 
                   response.data.length + "]");
                 this.derivativesArray = [];
-                console.log(response.data)
                 for (let i = 0; i < response.data.length; i++) {
                   if (response.data[i].length > 1) 
                     this.derivativesArray.push( response.data[i][0] + 
@@ -100,8 +98,7 @@ export default {
                   else 
                     this.derivativesArray.push( response.data[i][0] );
                 }
-                this.selectedDerivative = "";
-                this.$emit("selected", "");
+                this.selectedDerivative = this.derivativesArray[0];
                 return "done";
               }
               this.selectedDerivative = "";
