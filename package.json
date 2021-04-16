@@ -11,12 +11,14 @@
     "axios": "0.21.1",
     "bootstrap": "4.6.0",
     "bootstrap-vue": "2.21.2",
+    "chart.js": "^3.1.0",
     "core-js": "^3.6.5",
     "node-sass": "4",
     "sass-loader": "10",
     "trading-vue-js": "1.0.2",
     "tvjs-overlays": "0.4.0",
     "vue": "2.6.12",
+    "vue-chartjs": "^3.5.1",
     "vue-template-compiler": "^2.6.12"
   },
   "devDependencies": {
