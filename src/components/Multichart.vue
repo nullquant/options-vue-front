@@ -1,6 +1,6 @@
 <template>
-  <div id="multi-chart">
-    <chartbox
+  <div class="multi-chart">
+    <candlechart
       id="1m"
       :security="securityName"
       :scale="0"
@@ -10,8 +10,8 @@
       :height="cbox_height"
       :night="night"
     >
-    </chartbox>
-    <chartbox
+    </candlechart>
+    <candlechart
       id="H"
       :security="securityName"
       :scale="5"
@@ -21,8 +21,8 @@
       :height="cbox_height"
       :night="night"
     >
-    </chartbox>
-    <chartbox
+    </candlechart>
+    <candlechart
       id="D"
       :security="securityName"
       :scale="6"
@@ -32,18 +32,18 @@
       :height="cbox_height"
       :night="night"
     >
-    </chartbox>
+    </candlechart>
   </div>
 </template>
 
 <script>
-import Chartbox from "./ChartBox.vue";
+import Candlechart from "./CandleChart.vue";
 
 export default {
   name: "Multichart",
   props: ["night", "security", "time"],
   components: {
-    Chartbox,
+    Candlechart,
   },
   data() {
     return {
@@ -148,17 +148,16 @@ export default {
     window.addEventListener("resize", this.onResize);
     this.onResize();
   },
-  beforeMount() {
+  beforeUnmount() {
     window.removeEventListener("resize", this.onResize);
   },
 };
 </script>
 
 <style>
-#multi-chart {
+.multi-chart {
   display: grid;
   grid-template-columns: 33.33% 33.34% 33.33%;
-  height: 100%;
-  background-color: #1E222D;
+  background-color: #131722;
 }
 </style>

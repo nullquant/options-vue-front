@@ -9,7 +9,7 @@
 @import '~bootstrap-vue/src/index.scss';
 
 .custom-select {
-  color: #fff;
+  color: #DEDDDD;
   background: #1E222D;
 }
 
@@ -18,17 +18,17 @@
 }
 
 .nav-tabs .nav-link {
-  color: #fff;
+  color: #DEDDDD;
 }
 
 .nav-tabs .nav-link.active {
-  color: #fff;
+  color: #DEDDDD;
   background-color: #545b62;
   border-color: #434651;
 }
 
 .table-dark {
-  color: #fff;
+  color: #DEDDDD;
   background: #131722;
   border-color: #434651;
   text-align: center;
@@ -36,7 +36,7 @@
 }
 
 .b-table .thead-dark th {
-  color: #fff;
+  color: #DEDDDD;
   background-color: #1E222D;
   border-color: #434651;
 }
@@ -47,7 +47,7 @@
 }
 
 .bg-info {
-  background-color: #17a2b810 !important;
+  background-color: #17a2b808 !important;
 }
 
 /** {
@@ -61,7 +61,7 @@ body {
   padding: 0;
   box-sizing: border-box;
   font-family: "Open Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
-  color: #fff;
+  color: #DEDDDD;
   overflow-y: hidden;
 }
 

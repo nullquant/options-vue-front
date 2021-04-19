@@ -14,18 +14,12 @@
           :security="choosenFutures"
           :time="choosenTime"
         />
-        <b-tabs style="padding: 20px 0px 00px 00px">
-          <b-tab title="Options Table">
-            <options-table
-              :choosenDate="choosenDate"
-              :baseAsset="baseAsset"
-              :choosenTime="choosenTime"
-            />
-          </b-tab>
-          <b-tab title="Strategy">
-            <p>Strategy here...</p>
-          </b-tab>
-        </b-tabs>
+        <Options
+          :choosenDate="choosenDate"
+          :choosenTime="choosenTime"
+          :baseAsset="baseAsset"
+          :security="choosenFutures"
+        />
       </div>
     </main>
   </div>
@@ -34,14 +28,14 @@
 <script>
 import Multichart from "./components/Multichart.vue";
 import SideBar from "./components/SideBar.vue";
-import OptionsTable from "./components/OptionsTable.vue";
+import Options from "./components/Options.vue";
 
 export default {
   name: "App",
   components: {
     Multichart,
     SideBar,
-    OptionsTable,
+    Options,
   },
   data() {
     return {
