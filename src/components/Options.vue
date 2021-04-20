@@ -30,23 +30,33 @@
                 </div>
                 <div class="vol-chart" :style="{ height:lchart_height + 'px' }">
                     <div :style="{ width:lchart_width + 'px' }">
-                    <line-chart 
+                    <scatter
                         :chart-data="volatilityCurveData"
                         :options="lineChartSettings"
                         :styles="lchart_style">
-                    </line-chart>
+                    </scatter>
                     </div>
                     <div :style="{ width:lchart_width + 'px' }">
-                    <line-chart 
+                    <scatter
                         :chart-data="volatilityHistoryData"
                         :options="timeChartSettings"
                         :styles="lchart_style">
-                    </line-chart>
+                    </scatter>
                     </div>
                 </div>
           </b-tab>
           <b-tab title="Strategy">
-            <p>Strategy here...</p>
+            <div style="padding: 10px 0px 0px 0px;">
+                <b-container fluid>
+                    <b-row cols=5 class='px-2'>
+                        <b-col class='px-1'> <option-card title="Option #1"></option-card> </b-col>
+                        <b-col class='px-1'> <option-card title="Option #2"></option-card> </b-col>
+                        <b-col class='px-1'> <option-card title="Option #3"></option-card> </b-col>
+                        <b-col class='px-1'> <option-card title="Option #4"></option-card> </b-col>
+                        <b-col class='px-1'> <option-card title="Futures"></option-card> </b-col>
+                    </b-row>
+                </b-container>
+            </div>
           </b-tab>
         </b-tabs>
     </div>
@@ -54,12 +64,14 @@
 
 <script>
 import OptionsTable from "./OptionsTable.vue";
-import LineChart from './LineChart.vue'
+import Scatter from './LineChart.vue'
+import GBS from './gbs.js'
+import OptionCard from './OptionCard.vue'
 
 export default {
   name: "Options",
   components: {
-    OptionsTable, LineChart
+    OptionsTable, Scatter, OptionCard
   },
   props: ["choosenDate", "choosenTime", "baseAsset", "choosenFutures"],
   data() {
@@ -68,8 +80,8 @@ export default {
             optionsDescriptionArray: [],
             optionsExpirationArray: [],
             optionDataIndex: 0,
-            optionsData: [],
-            optionsTableData: [],
+            optionsData: [], // all options
+            optionsTableData: [], // selected option
             optionsTableDataChanged: false,
             optionsTableBusy: false,
             width: window.innerWidth - 320,
@@ -152,8 +164,24 @@ export default {
       },
   },  
   watch: {
+    baseAsset(newAsset, oldAsset) {
+        this.optionsTableBusy = true;
+        this.loadOptions()
+    },
     choosenDate(newDate, oldDate) {
         this.optionsTableBusy = true;
+        this.loadOptions()
+    },
+    choosenOption(newOption, oldOption) {
+        this.optionsTableBusy = true;
+        this.loadOptionTable();
+    },
+    choosenTime(newTime, oldTime) {
+        this.volatilityCurve();
+    }
+  }, 
+  methods: {
+    loadOptions() {
         const query = "http://localhost:5000/api/v1/options?date=" + 
             this.choosenDate + "&q=" + this.$props.baseAsset;
         this.$axios.get(query)
@@ -193,8 +221,19 @@ export default {
             return "error";
             })
             .catch((error) => {
-                console.log(error);
-                this.choosenOptions = -1;
+                if (error.response) {
+                // Request made and server responded
+                    console.log(error.response.data);
+                    console.log(error.response.status);
+                    console.log(error.response.headers);
+                } else if (error.request) {
+                // The request was made but no response was received
+                    console.log(error.request);
+                } else {
+                // Something happened in setting up the request that triggered an Error
+                    console.log('Error', error.message);
+                }
+                this.choosenOption = -1;
                 this.optionsExpirationArray = [];
                 this.optionsDescriptionArray = [];
                 this.optionsData = [];
@@ -203,19 +242,6 @@ export default {
                 this.optionsTableBusy = false;
                 return "error";
             });
-    },
-    choosenOption(newOption, oldOption) {
-        this.optionsTableBusy = true;
-        this.loadOptionTable();
-    },
-    choosenTime(newTime, oldTime) {
-        this.volatilityCurve();
-    }
-  }, 
-  methods: {
-    onResize(event) {
-      this.width = window.innerWidth - 320;
-      this.height = this.width * 3 / 10;
     },
     loadOptionTable() {
       // No date selected or error
@@ -256,7 +282,18 @@ export default {
                     this.volatilityHistory();
                 })
                 .catch((error) => {
-                    console.log("Got error:" + error);
+                    if (error.response) {
+                    // Request made and server responded
+                        console.log(error.response.data);
+                        console.log(error.response.status);
+                        console.log(error.response.headers);
+                    } else if (error.request) {
+                    // The request was made but no response was received
+                        console.log(error.request);
+                    } else {
+                    // Something happened in setting up the request that triggered an Error
+                        console.log('Error', error.message);
+                    }
                     this.optionsTableData = [];
                     this.optionsTableDataChanged = !this.optionsTableDataChanged;
                     this.optionsTableBusy = false;
@@ -265,27 +302,125 @@ export default {
       }
     },
     volatilityCurve() {
-        this.volatilityCurveData = {};
-        this.volatilityCurveData['labels'] = [];
-        this.volatilityCurveData['datasets'] = [ {
+        this.volatilityCurveData= { datasets: [{
                 type: 'line',
                 label: 'MOEX Volatility',
                 fill: false,
                 borderColor: 'rgb(75, 192, 192)',
                 data: [],
+                spanGaps: true,
                 pointRadius: 0,
-            },];
+            }, {
+                type: 'scatter',
+                label: 'Call Bid volatility',
+                fill: true,
+                borderColor: '#23A776',
+                backgroundColor: '#23A776',
+                data: [],
+                radius: 6, 
+                pointStyle: "triangle"
+            }, {
+                type: 'scatter',
+                label: 'Call Ask Volatility',
+                fill: true,
+                borderColor: '#23A776',
+                data: [],
+                radius: 6, 
+                pointStyle: "triangle",
+                rotation: 180
+            }, {
+                type: 'scatter',
+                label: 'Put Bid volatility',
+                fill: true,
+                borderColor: '#E54150',
+                backgroundColor: '#E54150',
+                data: [],
+                radius: 6, 
+                pointStyle: "triangle"
+            }, {
+                type: 'scatter',
+                label: 'Put Ask Volatility',
+                fill: true,
+                borderColor: '#E54150',
+                data: [],
+                radius: 6, 
+                pointStyle: "triangle",
+                rotation: 180
+            } ]};
+
         if (this.optionsTableData.length === 0) return;
+
         const slicedTable = this.optionTableSlice(this.optionsTableData);
+
+        const fs = parseFloat(this.optionsTableData[this.optionDataIndex]["asset"]);
+
+        const timezone = new Date(1970, 0, 1).getTime()
+        const firstTradingDay = new Date(this.optionsDescriptionArray[this.choosenOption][4]).valueOf() + timezone;
+        let lastTradingDay = new Date(this.optionsDescriptionArray[this.choosenOption][5]).valueOf() + timezone;
+        const tradingDays = (lastTradingDay - firstTradingDay) /(1000 * 60 * 60 * 24);
+        if (tradingDays > 30 && this.$props.baseAsset.startsWith("Si")) lastTradingDay += 14 * 60 * 60 * 1000;
+        else  lastTradingDay += 18 * 60 * 60 * 1000 + 50 * 60 * 1000;
+        const currentEpoch = this.getTimeEpoch(this.optionsTableData[0]["epoch"], this.$props.choosenTime);
+        const t = (lastTradingDay - currentEpoch) / (1000 * 60 * 60 * 24 * 365);
+
+        var v;
+
+        var moexData = [];
+        var maxVolatility = 0;
         for (let i=0; i<slicedTable.length; i++) {
             if (slicedTable[i]['call_iv'].length > 0) {
-                this.volatilityCurveData['labels'].push(slicedTable[i]['strike']);
-                this.volatilityCurveData['datasets'][0]['data'].push(slicedTable[i]['call_iv'])
+                moexData.push({x: slicedTable[i]['strike'], y: slicedTable[i]['call_iv']});
+                maxVolatility = Math.max(maxVolatility, parseFloat(slicedTable[i]['call_iv']));
             } else if (slicedTable[i]['put_iv'].length > 0) {
-                this.volatilityCurveData['labels'].push(slicedTable[i]['strike']);
-                this.volatilityCurveData['datasets'][0]['data'].push(slicedTable[i]['put_iv'])
+                moexData.push({x: slicedTable[i]['strike'], y: slicedTable[i]['put_iv']});
+                maxVolatility = Math.max(maxVolatility, parseFloat(slicedTable[i]['put_iv']));
             }
         }
+
+        var callBidData = [];
+        var callAskData = [];
+        var putBidData = [];
+        var putAskData = [];
+        for (let i=0; i<slicedTable.length; i++) {
+            const x = parseFloat(slicedTable[i]['strike'])
+
+            if (slicedTable[i]['call_bid'].length > 0) {
+                const cp = parseFloat(slicedTable[i]['call_bid']);
+                if (cp >= GBS.black_76('c', fs, x, t, 0, 0.005)[0]) v = GBS.euro_implied_vol_76('c', fs, x, t, 0, cp);
+                else v = 0.0;
+                v = Math.round(v * 10000)/100;
+                if (v < maxVolatility * 2) callBidData.push({x: x, y: v});
+            }
+
+            if (slicedTable[i]['call_ask'].length > 0) {
+                const cp = parseFloat(slicedTable[i]['call_ask']);
+                if (cp >= GBS.black_76('c', fs, x, t, 0, 0.005)[0]) v = GBS.euro_implied_vol_76('c', fs, x, t, 0, cp);
+                else v = 0.0;
+                v = Math.round(v * 10000)/100;
+                if (v < maxVolatility * 2) callAskData.push({x: x, y: v});
+            }
+
+            if (slicedTable[i]['put_bid'].length > 0) {
+                const cp = parseFloat(slicedTable[i]['put_bid']);
+                if (cp >= GBS.black_76('p', fs, x, t, 0, 0.005)[0]) v = GBS.euro_implied_vol_76('p', fs, x, t, 0, cp);
+                else v = 0.0;
+                v = Math.round(v * 10000)/100;
+                if (v < maxVolatility * 2) putBidData.push({x: x, y: v});
+            }
+
+            if (slicedTable[i]['put_ask'].length > 0) {
+                const cp = parseFloat(slicedTable[i]['put_ask']);
+                if (cp >= GBS.black_76('p', fs, x, t, 0, 0.005)[0]) v = GBS.euro_implied_vol_76('p', fs, x, t, 0, cp);
+                else v = 0.0;
+                v = Math.round(v * 10000)/100;
+                if (v < maxVolatility * 2) putAskData.push({x: x, y: v});
+            }
+        }
+        this.volatilityCurveData['datasets'][0]['data'] = moexData;
+        this.volatilityCurveData['datasets'][1]['data'] = callBidData;
+        this.volatilityCurveData['datasets'][2]['data'] = callAskData;
+        this.volatilityCurveData['datasets'][3]['data'] = putBidData;
+        this.volatilityCurveData['datasets'][4]['data'] = putAskData;
     },
     volatilityHistory() {
         this.volatilityHistoryData = {};
@@ -297,43 +432,12 @@ export default {
                 borderColor: 'rgb(75, 192, 192)',
                 data: [],
                 pointRadius: 0,
-            },];
+            }];
         if (this.volatilityData.length === 0 || 
             this.volatilityData[this.choosenOption].length === 0) return;
         for (let i=0; i<this.volatilityData[this.choosenOption].length; i++) {
             this.volatilityHistoryData['labels'].push(this.volatilityData[this.choosenOption][i][0]);
             this.volatilityHistoryData['datasets'][0]['data'].push(this.volatilityData[this.choosenOption][i][1])
-        }
-    },
-    fillData () {
-        this.lineChartData = {
-            labels: [0, 1, 2, 3, 4, 5],
-            datasets: [ {
-                type: 'line',
-                label: 'Data One',
-                fill: false,
-                borderColor: 'rgb(75, 192, 192)',
-                data: [25, 23, 20, 17, 21, 24],
-                pointRadius: 0,
-            }, {
-                type: 'scatter',
-                label: 'Data Two',
-                fill: true,
-                borderColor: 'rgb(75, 192, 192)',
-                backgroundColor: 'rgb(75, 192, 192)',
-                data: [30, 20, 10, 25, 29, 30],
-                radius: 6, 
-                pointStyle: "triangle"
-            }, {
-                type: 'scatter',
-                label: 'Data Three',
-                fill: true,
-                borderColor: 'rgb(75, 192, 192)',
-                data: [27, 18, 0, 21, 19, 29],
-                radius: 6, 
-                pointStyle: "triangle",
-                rotation: 180
-            } ]
         }
     },
     optionTableSlice(data) {
@@ -372,6 +476,10 @@ export default {
         index = Math.floor((left + right) / 2);
       }
       return right;
+    },
+    onResize(event) {
+      this.width = window.innerWidth - 320;
+      this.height = this.width * 3 / 10;
     },
   },
   mounted() {
