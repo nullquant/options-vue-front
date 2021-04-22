@@ -110,7 +110,7 @@ export default {
     },
     methods: {
         volatilityCurve() {
-            this.volatilityCurveData= { datasets: [{
+            this.volatilityCurveData = { datasets: [{
                     type: 'line',
                     label: 'MOEX Volatility',
                     fill: false,
@@ -155,7 +155,6 @@ export default {
                     pointStyle: "triangle",
                     rotation: 180
                 } ]};
-
             if (!this.$props.optionsData || !this.$props.optionsData[this.$props.optionsDataIndex]) return;
 
             const slicedTable = this.$props.optionsData[this.$props.optionsDataIndex]["option_table"];
@@ -220,23 +219,24 @@ export default {
             this.volatilityCurveData['datasets'][3]['data'] = putBidData;
             this.volatilityCurveData['datasets'][4]['data'] = putAskData;
         },
-    volatilityHistory() {
-        this.volatilityHistoryData = {};
-        this.volatilityHistoryData['labels'] = [];
-        this.volatilityHistoryData['datasets'] = [ {
-                type: 'line',
-                label: 'History Volatility',
-                fill: false,
-                borderColor: 'rgb(75, 192, 192)',
-                data: [],
-                pointRadius: 0,
-            }];
-        if (!this.$props.volatilityData) return;
-        for (let i=0; i<this.$props.volatilityData.length; i++) {
-            this.volatilityHistoryData['labels'].push(this.$props.volatilityData[i][0]);
-            this.volatilityHistoryData['datasets'][0]['data'].push(this.$props.volatilityData[i][1])
-        }
-    },
+        volatilityHistory() {
+            this.volatilityHistoryData = {};
+            this.volatilityHistoryData['labels'] = [];
+            this.volatilityHistoryData['datasets'] = [ {
+                    type: 'line',
+                    label: 'History Volatility',
+                    fill: false,
+                    borderColor: 'rgb(75, 192, 192)',
+                    data: [],
+                    pointRadius: 0,
+                }];
+
+            if (!this.$props.volatilityData) return;
+            for (let i=0; i<this.$props.volatilityData.length; i++) {
+                this.volatilityHistoryData['labels'].push(this.$props.volatilityData[i][0]);
+                this.volatilityHistoryData['datasets'][0]['data'].push(this.$props.volatilityData[i][1])
+            }
+        },
         onResize(event) {
             this.width = window.innerWidth - 320;
             this.height = this.width * 3 / 10;

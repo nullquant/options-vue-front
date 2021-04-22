@@ -5,6 +5,7 @@
       :security="securityName"
       :scale="0"
       :ohlcv="ohlcv"
+      :pnl="pnl"
       :dataChanged="dataChanged"
       :width="cbox_width"
       :height="cbox_height"
@@ -16,6 +17,7 @@
       :security="securityName"
       :scale="5"
       :ohlcv="ohlcv"
+      :pnl="pnl"
       :dataChanged="dataChanged"
       :width="cbox_width"
       :height="cbox_height"
@@ -27,6 +29,7 @@
       :security="securityName"
       :scale="6"
       :ohlcv="ohlcv"
+      :pnl="pnl"
       :dataChanged="dataChanged"
       :width="cbox_width"
       :height="cbox_height"
@@ -41,7 +44,7 @@ import Candlechart from "./CandleChart.vue";
 
 export default {
   name: "Multichart",
-  props: ["night", "security", "time"],
+  props: ["night", "security", "time", "pnl"],
   components: {
     Candlechart,
   },

@@ -39,7 +39,8 @@
                     :currentEpoch="currentEpoch"
                     :optionsData="optionsData"
                     :dataChanged="dataChanged" 
-                    @nodata="loadOptionTable($event)" />
+                    @nodata="loadOptionTable($event)" 
+                    @pnl="$emit('pnl', $event)" />
             </b-tab>
         </b-tabs>
     </div>
@@ -247,16 +248,18 @@ export default {
         return lastDate.valueOf();
     },
     findIndex(data, epoch) {
-        let left = 0;
-        let right = data.length;
-        let index = Math.floor((left + right) / 2);
-        while(right - left > 1) {
+        let low = 0;
+        let high = data.length;
+        if (data[low]["epoch"] >= epoch) return low;
+        let index = Math.floor((low + high) / 2);
+        while(high - low > 1) {
             if (data[index]["epoch"] === epoch) return index;
-            if (data[index]["epoch"] < epoch) left = index;
-            else right = index;
-            index = Math.floor((left + right) / 2);
+            if (data[index]["epoch"] < epoch) low = index;
+            else high = index;
+            index = Math.floor((low + high) / 2);
         }
-        return right;
+        if (data[high]["epoch"] === epoch) return high; 
+        return low;
     },
   },
 };

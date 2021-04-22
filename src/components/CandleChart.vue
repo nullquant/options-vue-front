@@ -27,7 +27,8 @@
 </template>
 
 <script>
-import { TradingVue, DataCube, Channel } from "trading-vue-js";
+import { TradingVue, DataCube } from "trading-vue-js";
+import LinePNL from './LinePNL.js';
 
 export default {
   name: "Chartbox",
@@ -36,6 +37,7 @@ export default {
     "security",
     "scale",
     "ohlcv",
+    "pnl",
     "dataChanged",
     "width",
     "height",
@@ -52,6 +54,38 @@ export default {
       this.dataCube.set("chart.data", this.$props.ohlcv["data"][this.selectedScale]);
       this.dataCube.set("chart.tf", this.scalesArray[this.selectedScale]["text"]);
       this.dataCube.set('onchart.KC.data', this.$props.ohlcv["KC"][this.selectedScale])
+
+      if (!this.$props.ohlcv["data"][this.selectedScale]) return;
+      const length = this.$props.ohlcv["data"][this.selectedScale].length;
+      if (length < 2) return;
+        
+      let epoch = this.$props.ohlcv["data"][this.selectedScale][length-1][0];
+      epoch = 2 * epoch - this.$props.ohlcv["data"][this.selectedScale][length-2][0];
+
+      if (!this.$props.pnl || this.$props.pnl.length < 2) return;
+
+      this.dataCube.del('LinePNL');
+      
+      for (let i=1; i < this.$props.pnl.length; i++) {
+
+          let color = '#ffffff'
+
+          if (this.$props.pnl[i-1][1] === 0 && this.$props.pnl[i][1] === 0) continue;
+          if (this.$props.pnl[i-1][1] > 0 || this.$props.pnl[i][1] > 0) color = '#23A776'
+          if (this.$props.pnl[i-1][1] < 0 || this.$props.pnl[i][1] < 0) color = '#E54150'
+
+          this.dataCube.add('onchart',{
+              name: "LinePNL",
+              type: "Segment",
+              data: [],
+              settings: {
+                p1: [epoch, this.$props.pnl[i-1][0]],
+                p2: [epoch, this.$props.pnl[i][0]],
+                lineWidth: 3,
+                legend: false,
+                color: color }});
+      }
+
       this.$refs.tradingVue.resetChart();
     },
   },
@@ -59,6 +93,9 @@ export default {
     dataChanged(newData, oldData) {
       this.updateScale();
     },
+    pnl(newData, oldData) {
+      this.updateScale();
+    }
   },
   computed: {
     title() {
@@ -73,7 +110,7 @@ export default {
   },
   data() {
     return {
-      overlays: Channel,
+      overlays: [ ],
       dataCube: new DataCube({
         chart: {},
         onchart: [

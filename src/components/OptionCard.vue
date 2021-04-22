@@ -67,11 +67,20 @@
             <b-row class='px-0' align-v="center">
 
                 <b-col class='px-1 py-1'>
-                    <b-form-spinbutton id="qty-sb" v-model="quantity" min="0" max="100" size="sm" />
+                    <b-form-spinbutton 
+                        id="qty-sb" 
+                        v-model="quantity" 
+                        min="0" 
+                        :max="(selectedPrice > 0) ? 100: 0" 
+                        size="sm" />
                 </b-col>
 
                 <b-col class='px-1 py-1'>
-                    <b-form-spinbutton id="price-sb" v-model="value" min="1" max="3000" size="sm" />
+                    <b-form-select
+                        size="sm"
+                        v-model="selectedPrice"
+                        :options="priceArray" 
+                        @change="changePrice" />
                 </b-col>
 
             </b-row>
@@ -85,7 +94,7 @@
 <script>
 export default {
     name: "OptionCard",
-    emits: ["nodata"],
+    emits: ["nodata", "quantity"],
     props: ["title", "expirationArray", "prices", "dataChanged"],
     data() {
         return {
@@ -99,8 +108,8 @@ export default {
             strikeArray: [],
             selectedStrike: 0,
             quantity: 0,
-            value: 1
-
+            selectedPrice: 0,
+            priceArray: [],
         };
     },
     watch: {
@@ -108,21 +117,24 @@ export default {
             this.changeExpiration();
         },
         selectedStrike(newData, oldData) {
-            if (!this.prices[this.selectedExpiration][1].length === 0) {
-                null;
-            }
-
-            // no data??
-            if (this.checkedCall) {
-                this.prices[this.selectedExpiration][1][this.selectedStrike]['call_bid']
-                this.prices[this.selectedExpiration][1][this.selectedStrike]['call_ask']
-            } else {
-                this.prices[this.selectedExpiration][1][this.selectedStrike]['put_bid']
-                this.prices[this.selectedExpiration][1][this.selectedStrike]['put_ask']
-            }
+            this.changeStrike();
+        },
+        quantity(newData, oldData) {
+            this.sendLeg();
         }
     },
     methods: {
+        changeExpiration() {
+            if (!this.$props.prices || !this.$props.prices[this.selectedExpiration]) {
+                this.$emit("nodata", this.selectedExpiration);
+                this.strikeArray = [];
+                this.selectedStrike = 0;
+            } else {
+                this.strikeArray = this.prices[this.selectedExpiration][0];
+                this.selectedStrike = this.strikeArray.length / 2 - 1;
+            }
+            this.changeStrike();
+        },
         changeMethod(checked) {
             if (this.checkedCall != this.callPutArray[0]) {
                 this.checkedPut = !this.checkedPut;
@@ -137,16 +149,73 @@ export default {
                 this.checkedBuy = !this.checkedBuy;
                 this.buyWriteArray = [this.checkedBuy, this.checkedWrite];
             }
+            this.changeStrike();
         },
-        changeExpiration() {
-            if (!this.$props.prices || !this.$props.prices[this.selectedExpiration]) {
-                this.$emit("nodata", this.selectedExpiration);
-                this.strikeArray = []
-            } else {
-                this.strikeArray = this.prices[this.selectedExpiration][0];
-                this.selectedStrike = this.strikeArray.length / 2 - 1;
+        changeStrike() {
+            if (!this.$props.prices || !this.$props.prices[this.selectedExpiration] ||
+                this.prices[this.selectedExpiration][1].length === 0) {
+                this.priceArray = [{ text: 'NO DATA', value: -1, disabled: true}];
+                this.selectedPrice = -1;
+                this.quantity = 0;
+                return;
             }
+
+            var bid, mid, ask, bidValue, askValue, cp;
+
+            if (this.checkedCall) {
+                bid = this.prices[this.selectedExpiration][1][this.selectedStrike]['call_bid'];
+                mid = this.prices[this.selectedExpiration][1][this.selectedStrike]['call_mid'];
+                ask = this.prices[this.selectedExpiration][1][this.selectedStrike]['call_ask'];
+                cp = -10;
+            } else {
+                bid = this.prices[this.selectedExpiration][1][this.selectedStrike]['put_bid'];
+                mid = this.prices[this.selectedExpiration][1][this.selectedStrike]['put_mid'];
+                ask = this.prices[this.selectedExpiration][1][this.selectedStrike]['put_ask'];
+                cp = -20;
+            }
+
+            if (bid.length === 0) {
+                this.priceArray = [{ text: 'NO DATA', value: -1+cp, disabled: true}];
+                bidValue = -11;
+            } else {
+                this.priceArray = [{ text: bid, value: bid}];
+                bidValue = bid;
+            }
+            if (mid.length === 0) {
+                this.priceArray.push({ text: 'NO DATA', value: -2+cp, disabled: true});
+            } else {
+                this.priceArray.push({ text: mid, value: mid});
+            }
+            if (ask.length === 0) {
+                this.priceArray.push({ text: 'NO DATA', value: -3+cp, disabled: true});
+                askValue = -13;
+            } else {
+                this.priceArray.push({ text: ask, value: ask});
+                askValue = ask;
+            }
+
+            if (this.checkedBuy) this.selectedPrice = askValue;
+            else this.selectedPrice = bidValue;
+
+            if (this.selectedPrice < 0) this.quantity = 0;
+            if (this.quantity > 0) this.sendLeg();
         },
+        changePrice() {
+            if (this.quantity > 0) this.sendLeg();
+        },
+        sendLeg() {
+            var strike;
+            if (!this.$props.prices || !this.$props.prices[this.selectedExpiration] ||
+                !this.prices[this.selectedExpiration][1].length === 0) strike = '';
+                else strike = this.prices[this.selectedExpiration][1][this.selectedStrike]['strike'];
+            this.$emit("quantity", [this.selectedExpiration, 
+                                    this.checkedCall,
+                                    this.checkedBuy,
+                                    strike, 
+                                    this.selectedPrice,
+                                    this.quantity]);
+        }
+
     },
 };
 </script>

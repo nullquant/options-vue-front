@@ -13,12 +13,14 @@
         <Multichart
           :security="choosenFutures"
           :time="choosenTime"
+          :pnl="linePNL"
         />
         <Options
           :choosenDate="choosenDate"
           :choosenTime="choosenTime"
           :baseAsset="baseAsset"
           :security="choosenFutures"
+          @pnl="updatePNL"
         />
       </div>
     </main>
@@ -43,6 +45,7 @@ export default {
       choosenTime: "10:00",
       baseAsset: "Si",
       choosenFutures: [],
+      linePNL: [],
     };
   },
   methods: {
@@ -57,6 +60,9 @@ export default {
     },
     updateFutures(payload) {
       this.choosenFutures = payload;
+    },
+    updatePNL(payload) {
+      this.linePNL = payload;
     }
   },
 };
