@@ -109,6 +109,7 @@ export default {
             selectedStrike: 0,
             quantity: 0,
             selectedPrice: 0,
+            selectedSpread: 0,
             priceArray: [],
         };
     },
@@ -156,6 +157,7 @@ export default {
                 this.prices[this.selectedExpiration][1].length === 0) {
                 this.priceArray = [{ text: 'NO DATA', value: -1, disabled: true}];
                 this.selectedPrice = -1;
+                this.selectedSpread = 0;
                 this.quantity = 0;
                 return;
             }
@@ -194,6 +196,9 @@ export default {
                 askValue = ask;
             }
 
+            if (askValue < 0 || bidValue < 0) this.selectedSpread = 0.2;
+            else this.selectedSpread = (parseFloat(askValue) - parseFloat(bidValue)) / parseFloat(mid);
+
             if (this.checkedBuy) this.selectedPrice = askValue;
             else this.selectedPrice = bidValue;
 
@@ -207,12 +212,13 @@ export default {
             var strike;
             if (!this.$props.prices || !this.$props.prices[this.selectedExpiration] ||
                 !this.prices[this.selectedExpiration][1].length === 0) strike = '';
-                else strike = this.prices[this.selectedExpiration][1][this.selectedStrike]['strike'];
+            else strike = this.prices[this.selectedExpiration][1][this.selectedStrike]['strike'];
             this.$emit("quantity", [this.selectedExpiration, 
                                     this.checkedCall,
                                     this.checkedBuy,
                                     strike, 
                                     this.selectedPrice,
+                                    this.selectedSpread,
                                     this.quantity]);
         }
 

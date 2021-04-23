@@ -45,6 +45,7 @@ import Candlechart from "./CandleChart.vue";
 export default {
   name: "Multichart",
   props: ["night", "security", "time", "pnl"],
+  emits: ["price"],
   components: {
     Candlechart,
   },
@@ -124,9 +125,38 @@ export default {
         KCArray.push(this.fullData["KC"][i].slice(0, index))
       }
       const dayLength = this.fullData["data"][6].length;
-      dataArray.push(this.fullData["data"][6].slice(0, dayLength-1))
-      KCArray.push(this.fullData["KC"][6].slice(0, dayLength-1))
+      dataArray.push(this.fullData["data"][6].slice(0, dayLength-1));
+      KCArray.push(this.fullData["KC"][6].slice(0, dayLength-1));
+
+      const min = parseInt(this.$props.time.split(":")[1]);
+      if (min % 3 != 0) dataArray[1].push(this.lastCandle(dataArray[0], min % 3));
+      if (min % 5 != 0) dataArray[2].push(this.lastCandle(dataArray[0], min % 5));
+      if (min % 10 != 0) dataArray[3].push(this.lastCandle(dataArray[0], min % 10));
+      if (min % 30 != 0) dataArray[4].push(this.lastCandle(dataArray[0], min % 30));
+      if (min != 0) dataArray[5].push(this.lastCandle(dataArray[0], min));
+      
+      const dayStart = this.findIndex(dataArray[0], this.getTimeEpoch("00:00")) + 1;
+      dataArray[6].push(this.lastCandle(dataArray[0], dataArray[0].length - dayStart));
+
       this.ohlcv = { "data": dataArray, "KC": KCArray };
+      this.$emit("price", dataArray[0][dataArray[0].length-1][4]);
+    },
+    lastCandle(data, interval) {
+      const length = data.length;
+      const i0 = Math.max(length - interval, 0);
+
+      const epoch = data[i0][0];
+      const open = data[i0][1];
+      const close = data[length-1][4];
+      let high = open;
+      let low = open;
+      let volume = 0;
+      for (let i=i0; i<length; i++) {
+        high = Math.max(high, data[i][2]);
+        low = Math.min(low, data[i][3]);
+        volume += data[i][5];
+      }
+      return [epoch, open, high, low, close, volume];
     },
     getTimeEpoch(newTime) {
       if (this.fullData["data"][0].length === 0) return -1;

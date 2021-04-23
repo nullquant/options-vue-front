@@ -14,12 +14,13 @@
           :security="choosenFutures"
           :time="choosenTime"
           :pnl="linePNL"
+          @price="updatePrice"
         />
         <Options
           :choosenDate="choosenDate"
           :choosenTime="choosenTime"
           :baseAsset="baseAsset"
-          :security="choosenFutures"
+          :price="lastPrice"
           @pnl="updatePNL"
         />
       </div>
@@ -45,6 +46,7 @@ export default {
       choosenTime: "10:00",
       baseAsset: "Si",
       choosenFutures: [],
+      lastPrice: 0,
       linePNL: [],
     };
   },
@@ -63,6 +65,9 @@ export default {
     },
     updatePNL(payload) {
       this.linePNL = payload;
+    },
+    updatePrice(payload) {
+      this.lastPrice = payload;
     }
   },
 };

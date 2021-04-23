@@ -47,13 +47,18 @@
         </div>
         <div class="strategy-chart" :style="{ height:lchart_height + 'px' }">
             <div :style="{ width:lchart_width + 'px' }">
-            <scatter
-                :chart-data="payoffCurve"
-                :options="chartSettings"
-                :styles="lchart_style" />
+                <scatter
+                    :chart-data="payoffCurve"
+                    :options="chartSettings"
+                    :styles="lchart_style" />
             </div>
-            <div :style="{ width:lchart_width + 'px' }">
-                <h4> Table </h4>
+            <div :style="{ width:ptable_width + 'px' }">
+                <positions-table
+                    :optionPrices="optionPrices"
+                    :strategy="strategy"
+                    :price="price"
+                    :dataChanged="positionsChanged"
+                    />
             </div>
         </div>
     </div>
@@ -61,19 +66,22 @@
 
 <script>
 import OptionCard from './OptionCard.vue';
+import PositionsTable from './PositionsTable.vue';
 import Scatter from './LineChart.vue'
 import GBS from './gbs.js'
 
 export default {
     name: "OptionStrategy",
-    components: { OptionCard, Scatter },
+    components: { OptionCard, Scatter, PositionsTable },
     emits: ["nodata", "pnl"],
-    props: ["expirationArray", "currentEpoch", "optionsData", "dataChanged"],
+    props: ["expirationArray", "descriptionArray", "currentEpoch", "price", 
+            "optionsData", "dataChanged"],
     data() {
         return {
             optionPrices: [],
             allStrikes: [],
-            portfolio: [[], [], [], [], []],
+            strategy: [[], [], [], [], []],
+            positionsChanged: false,
             futuresPrice: 0,
             payoffCurve: {},
             width: window.innerWidth - 320,
@@ -128,7 +136,8 @@ export default {
                 position: 'relative',
             };
         },
-        lchart_width() { return Math.floor(this.width / 2); },
+        lchart_width() { return Math.floor(this.width * 0.4); },
+        ptable_width() { return Math.floor(this.width * 0.6); },
         lchart_height() { return Math.floor(this.height); },
     },  
     watch: {
@@ -167,8 +176,10 @@ export default {
                 }
                 this.allStrikes = Array.from(strikeSet);
                 this.allStrikes.sort();
-                this.optionPrices[i] = [strikeArray, table];
+                this.optionPrices[i] = [strikeArray, table, this.$props.price];
             }
+
+            this.positionsChanged = !this.positionsChanged;
         },
         findIndex(data, epoch) {
             let low = 0;
@@ -188,15 +199,11 @@ export default {
             this.$emit("nodata", payload);
         },
         changeLeg(index, payload) {
-
-            // expiration index, call?, buy?, strike, price, quantity
-            this.portfolio[index] = payload;
-
             this.payoffCurve= { datasets: [{
                     type: 'line',
-                    label: 'P&L',
+                    label: 'P&L @ expiration',
                     fill: false,
-                    borderColor: 'rgb(75, 192, 192)',
+                    borderColor: '#4BC0C050',
                     data: [],
                     spanGaps: true,
                     pointRadius: 0,
@@ -205,55 +212,131 @@ export default {
                     type: 'scatter',
                     label: 'BE points',
                     fill: true,
-                    borderColor: 'rgb(75, 192, 192)',
-                    backgroundColor: 'rgb(75, 192, 192)',
+                    borderColor: '#4BC0C050',
+                    backgroundColor: '#4BC0C050', // #4B98BF
                     data: [],
-                    radius: 6, 
+                    radius: 3, 
+                    pointStyle: "circle"
+            }, {
+                    type: 'line',
+                    label: 'P&L @ evening',
+                    fill: false,
+                    borderColor: '#4BC0C0',
+                    data: [],
+                    spanGaps: true,
+                    pointRadius: 0,
+                    lineTension: 0,
+            }, {
+                    type: 'scatter',
+                    label: 'Evening BE points',
+                    fill: true,
+                    borderColor: '#4BC0C0',
+                    backgroundColor: '#4BC0C0',
+                    data: [],
+                    radius: 3, 
                     pointStyle: "circle"
             } ]};
 
-            const length = this.allStrikes.length;
-            let payoff, x, xz, y, leg, K, premium, quantity;
-            let maxy = 0;
-            let payoffData = [];
-            let zerosData = [];
+            // payload: expiration index, call?, buy?, strike, price, spread, quantity
+            let K, premium, optionTime;
+            if (payload.length === 0 || payload[6] === 0) this.strategy[index] = [];
+            else {
+                K = parseFloat(payload[3]);
+                premium = parseFloat(payload[4]);
+
+                const expirationEpoch = this.optionExpirationEpoch(payload[0], this.$props.descriptionArray);
+                optionTime = (expirationEpoch - this.currentEpoch) / (1000 * 60 * 60 * 24 * 365);
+                let greeks;
+                if (premium > GBS.black_76(payload[1] ? 'c' : 'p', this.$props.price, K, optionTime, 0, 0.005)[0]) {
+                    const v = GBS.euro_implied_vol_76(payload[1] ? 'c' : 'p', this.$props.price, K, optionTime, 0, premium);
+                    greeks = GBS.black_76(payload[1] ? 'c' : 'p', this.$props.price, K, optionTime, 0, v);
+                    greeks[0] = v;
+                }
+                else {
+                    greeks = GBS.black_76(payload[1] ? 'c' : 'p', this.$props.price, K, optionTime, 0, 0.005);
+                    greeks[0] = 0.005;
+                }
+
+                const nameArray = this.$props.descriptionArray[payload[0]][1].split('_');
+                const secid = nameArray[0] + payload[3] + (payload[1] ? nameArray[1] : nameArray[2]);
+
+                this.strategy[index] = [secid, ...payload, ...greeks, optionTime * 365];
+                this.strategy[index].push((expirationEpoch - this.getTimeEpoch(this.currentEpoch, "18:50")) / (1000 * 60 * 60 * 24 * 365));
+            }
+
+            // strategy[0..4] :
+            // secid, expiration index, call?, buy?, strike, price, spread, quantity
+            // volatility, delta, gamma, theta, vega, rho, dte, t for evening clearings
+
+            let x, payoff, evening, leg, quantity, xz;
+            let expirationData = [];
+            let eveningData = []
+            let expirationZerosData = [];
+            let eveningZerosData = [];
             let linePNL = [];
-            for (let i=0; i<length; i++) {
+            for (let i=0; i<this.allStrikes.length; i++) {
                 x = parseFloat(this.allStrikes[i]);
                 payoff = 0;
-                for (let j=0; j<this.portfolio.length; j++) {
-                    leg = this.portfolio[j];
-                    if (leg.length === 0 || leg[5] === 0) continue;
+                evening = 0;
+                for (let j=0; j<this.strategy.length; j++) {
+                    leg = this.strategy[j];
+                    if (leg.length === 0 || leg[7] === 0) continue;
 
-                    K = parseFloat(leg[3]);
-                    premium = parseFloat(leg[4]);
-                    quantity = parseFloat(leg[5]);
-                    
-                    if (leg[1]) payoff += ((Math.max(x - K, 0) - premium) * (leg[2] ? 1 : -1)) * quantity;
-                    else payoff += (Math.max(K - x, 0) - premium) * (leg[2] ? 1 : -1) * quantity;
+                    K = parseFloat(leg[4]);
+                    premium = parseFloat(leg[5]);
+                    quantity = parseFloat(leg[7]);
+
+                    if (leg[2]) payoff += ((Math.max(x - K, 0) - premium) * (leg[3] ? 1 : -1)) * quantity;
+                    else payoff += (Math.max(K - x, 0) - premium) * (leg[3] ? 1 : -1) * quantity;
+
+                    let value = GBS.black_76(leg[2] ? 'c' : 'p', x, K, leg[15], 0, leg[8])[0];
+                    if (leg[3]) evening += ( value * (1 - leg[6]) - premium) * quantity;
+                    else evening += ( -value * (1 + leg[6]) + premium) * quantity;
                 }
-                payoffData.push({x: x, y: payoff});
-                linePNL.push([x, payoff]);
-                maxy = Math.max(maxy, payoff);
 
-                if (i > 0 && payoffData[i-1]['y'] * payoff < 0) {
-                    xz = (payoffData[i-1]['x'] * payoff - payoffData[i-1]['y'] * x) / 
-                         (payoff - payoffData[i-1]['y']);
-                    zerosData.push({x: xz,
-                                    y: 0});
+                expirationData.push({x: x, y: payoff});
+                eveningData.push({x: x, y: evening});
+                linePNL.push([x, evening]);
+
+                if (i > 0 && expirationData[i-1]['y'] * payoff < 0) {
+                    xz = (expirationData[i-1]['x'] * payoff - expirationData[i-1]['y'] * x) / 
+                         (payoff - expirationData[i-1]['y']);
+                    expirationZerosData.push({x: xz, y: 0});
+                }
+
+                if (i > 0 && eveningData[i-1]['y'] * evening < 0) {
+                    xz = (eveningData[i-1]['x'] * evening - eveningData[i-1]['y'] * x) / 
+                         (evening - eveningData[i-1]['y']);
+                    eveningZerosData.push({x: xz, y: 0});
                     linePNL.push([xz, 0]);
                 }
             }
 
-            this.payoffCurve['datasets'][0]['data'] = payoffData;
-            this.payoffCurve['datasets'][1]['data'] = zerosData;
+            this.payoffCurve['datasets'][0]['data'] = expirationData;
+            this.payoffCurve['datasets'][1]['data'] = expirationZerosData;
+            this.payoffCurve['datasets'][2]['data'] = eveningData;
+            this.payoffCurve['datasets'][3]['data'] = eveningZerosData;
+            this.positionsChanged = !this.positionsChanged;
 
             linePNL.sort(function(a,b){ return a[0] < b[0] ? -1 : 1; });
             this.$emit("pnl", linePNL);
-
-            // calculate all greeks, show in the table
-
         },
+        optionExpirationEpoch(selectedOption, optionDescriptionArray) {
+            const timezone = new Date(1970, 0, 1).getTime();
+            const firstTradingDayEpoch = new Date(optionDescriptionArray[selectedOption][4]).valueOf() + timezone;
+            let lastTradingDayEpoch = new Date(optionDescriptionArray[selectedOption][5]).valueOf() + timezone;
+            const tradingDays = (lastTradingDayEpoch - firstTradingDayEpoch) /(1000 * 60 * 60 * 24);
+            if (tradingDays > 30 && optionDescriptionArray[selectedOption][1].startsWith("Si")) lastTradingDayEpoch += 14 * 60 * 60 * 1000;
+            else  lastTradingDayEpoch += 18 * 60 * 60 * 1000 + 50 * 60 * 1000;
+            return lastTradingDayEpoch;
+        },
+        getTimeEpoch(oldEpoch, newTime) {
+            const lastDate = new Date(oldEpoch);
+            const strArray = newTime.split(":");
+            lastDate.setHours(parseInt(strArray[0]));
+            lastDate.setMinutes(parseInt(strArray[1]));
+            return lastDate.valueOf();
+        },        
         onResize(event) {
             this.width = window.innerWidth - 320;
             this.height = this.width * 0.25;
@@ -272,7 +355,7 @@ export default {
 <style>
 .strategy-chart {
   display: grid;
-  grid-template-columns: 50% 50%;
+  grid-template-columns: 40% 60%;
   background-color: #131722;
 }
 </style>

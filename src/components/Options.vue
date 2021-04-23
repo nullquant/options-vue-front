@@ -36,7 +36,9 @@
             <b-tab title="Strategy">
                 <option-strategy 
                     :expirationArray="optionsExpirationArray"
+                    :descriptionArray="optionsDescriptionArray"
                     :currentEpoch="currentEpoch"
+                    :price="price"
                     :optionsData="optionsData"
                     :dataChanged="dataChanged" 
                     @nodata="loadOptionTable($event)" 
@@ -56,7 +58,7 @@ export default {
     components: {
         OptionsTable, VolatilityCharts, OptionStrategy
     },
-    props: ["choosenDate", "choosenTime", "baseAsset", "choosenFutures"],
+    props: ["choosenDate", "choosenTime", "baseAsset", "price"],
     data() {
         return {
             choosenOption: -1,
