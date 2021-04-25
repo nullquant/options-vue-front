@@ -1,26 +1,14 @@
 <template>
   <div class="grid-container">
     <aside class="sidenav">
-      <SideBar
-        @date="updateDate"
-        @time="updateTime"
-        @base-asset="updateBaseAsset"
-        @futures="updateFutures"
-      />
+      <SideBar />
     </aside>
     <main class="main">
       <div>
         <Multichart
-          :security="choosenFutures"
-          :time="choosenTime"
           :pnl="linePNL"
-          @price="updatePrice"
         />
         <Options
-          :choosenDate="choosenDate"
-          :choosenTime="choosenTime"
-          :baseAsset="baseAsset"
-          :price="lastPrice"
           @pnl="updatePNL"
         />
       </div>
@@ -42,33 +30,13 @@ export default {
   },
   data() {
     return {
-      choosenDate: "",
-      choosenTime: "10:00",
-      baseAsset: "Si",
-      choosenFutures: [],
-      lastPrice: 0,
       linePNL: [],
     };
   },
   methods: {
-    updateDate(payload) {
-      this.choosenDate = payload;
-    },
-    updateTime(payload) {
-      this.choosenTime = payload;
-    },
-    updateBaseAsset(payload) {
-      this.baseAsset = payload;
-    },
-    updateFutures(payload) {
-      this.choosenFutures = payload;
-    },
     updatePNL(payload) {
       this.linePNL = payload;
     },
-    updatePrice(payload) {
-      this.lastPrice = payload;
-    }
   },
 };
 </script>

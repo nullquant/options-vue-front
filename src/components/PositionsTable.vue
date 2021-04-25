@@ -15,7 +15,7 @@
 export default {
     name: "PositionsTable",
     components: {},
-    props: ["prices", "strategy", "price", "dataChanged"],
+    props: ["prices", "strategy", "dataChanged"],
     data() {
         return {
             fields: [
@@ -38,6 +38,9 @@ export default {
             ],
             positionsTable: [],
         }
+    },
+    computed: {
+        lastPrice() { return this.$store.state.candles.lastPrice; },
     },
     watch: {
         dataChanged(newData, oldData) {
@@ -63,7 +66,7 @@ export default {
                     "gamma": Math.abs(leg[10]) > 0.01 ? leg[10].toFixed(3) : leg[10].toExponential(2),
                     "theta": Math.abs(leg[11]/365) > 1 ? (leg[11]/365).toFixed(0) : (leg[11]/365).toFixed(3),
                     "vega": Math.abs(leg[12]) > 1 ? leg[12].toFixed(0) : leg[12].toFixed(3),
-                    "ev": leg[5] - (leg[2] ? Math.max(0, this.$props.price - leg[4]) : Math.max(0, leg[4] - this.$props.price)),
+                    "ev": leg[5] - (leg[2] ? Math.max(0, this.lastPrice - leg[4]) : Math.max(0, leg[4] - this.lastPrice)),
                     "dte": leg[14].toFixed(0),
                     "open_price": leg[5],
                     "quantity": leg[7],
@@ -75,7 +78,7 @@ export default {
                 summary['gamma'] += leg[10];
                 summary['theta'] += leg[11] / 365;
                 summary['vega'] += leg[12];
-                summary['ev'] += leg[5] - (leg[2] ? Math.max(0, this.$props.price - leg[4]) : Math.max(0, leg[4] - this.$props.price));
+                summary['ev'] += leg[5] - (leg[2] ? Math.max(0, this.lastPrice - leg[4]) : Math.max(0, leg[4] - this.lastPrice));
                 summary['open_price'] += parseFloat(leg[5]);
             }
 

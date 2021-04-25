@@ -2,9 +2,6 @@
     <div class="o-card">
         <div class="o-card-body">
             <div class="container" fluid>
-
-            <h4>{{title}}</h4>  
-
             <b-row class='px-0' align-v="center">
                 <b-col col lg="3" class='px-0'>
                     <b-form-checkbox
@@ -237,12 +234,12 @@ export default {
     background-clip: border-box;
     border: 1px solid #434651;
     background-clip: border-box;
-    border-radius: 0.25rem;
+    border-radius: 10px;
 }
 .o-card-body {
     flex: 1 1 auto;
     min-height: 1px;
-    padding: 1.25rem;
+    padding: 10px;
 }
 .o-card-title {
     margin-bottom: 0.75rem;

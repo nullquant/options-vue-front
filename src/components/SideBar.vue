@@ -27,11 +27,7 @@
     </div>
     <div class="sidebar-item">
       <Derivative 
-        label="Futures:"
-        type="futures"
-        :baseAsset="baseAsset"
-        :choosenDate="choosenDate" 
-        @selected="updateFutures" />
+        label="Futures:" />
     </div>
     <div class="sidebar-item">
       <div class="container">
@@ -65,66 +61,61 @@
 import Derivative from "./Derivative.vue";
 
 export default {
-  name: "SideBar",
-  components: { Derivative },
-  emits: ["futures", "options", "date", "time", "base-asset"],
-  data() {
-    return {
-      choosenDate: "",
-      choosenTime: "10:00",
-      baseAsset: "Si",
-      baseAssetArray: [
-        { text: "USDRUB", value: "Si" },
-        { text: "RTS", value: "RI" },
-        { text: "Brent", value: "BR" }
-      ],      
-      selectedTimeFrame: 1,
-      timeFrameArray: [
-        {value: 1, text: "1m"},
-        {value: 10, text: "10m"},
-        {value: 60, text: "1H"}
-      ]
-    };
-  },
-  methods: {
-    updateDate(payload) {
-      this.$emit("date", this.choosenDate);
+    name: "SideBar",
+    components: { Derivative },
+    data() {
+        return {
+            choosenDate: "",
+            choosenTime: "10:00",
+            baseAsset: "Si",
+            baseAssetArray: [
+                { text: "USDRUB", value: "Si" },
+                { text: "RTS", value: "RI" },
+                { text: "Brent", value: "BR" }
+            ],      
+            selectedTimeFrame: 1,
+            timeFrameArray: [
+                {value: 1, text: "1m"},
+                {value: 10, text: "10m"},
+                {value: 60, text: "1H"}
+            ]
+        };
     },
-    updateTime(payload) {
-      this.$emit("time", this.choosenTime);
+    methods: {
+        updateDate(payload) {
+            this.$store.dispatch('candles/setDate', this.choosenDate);
+        },
+        updateTime(payload) {
+            this.$store.dispatch('candles/setTime', this.choosenTime);
+        },
+        updateBaseAsset(payload) {
+            this.$store.dispatch('candles/setBaseAsset', this.baseAsset);
+        },
+        timeGo() {
+            const stringArray = this.choosenTime.split(":");
+            let hour = parseInt(stringArray[0]);
+            let min = parseInt(stringArray[1]);
+            switch(this.selectedTimeFrame) {
+                case 1: min = min + 1;
+                        break;
+                case 10: min = Math.floor(min / 10) * 10 + 10;
+                        break;
+                default: min = 0;
+                        hour = hour + 1;
+                        break; 
+            }
+            if (min > 59) {
+                hour = hour + 1;
+                min = min - 60;
+            }
+            if (hour > 23) {
+                hour = 23;
+                min = 59;
+            }
+            this.choosenTime = String(hour).padStart(2, '0') + ":" + String(min).padStart(2, '0');
+            this.updateTime();
+        }
     },
-    updateBaseAsset(payload) {
-      this.$emit("base-asset", this.baseAsset);
-    },
-    updateFutures(payload) {
-      this.$emit("futures", [payload, this.choosenDate, this.choosenTime]);
-    },
-    updateOptions(payload) { },
-    timeGo() {
-      const stringArray = this.choosenTime.split(":");
-      let hour = parseInt(stringArray[0]);
-      let min = parseInt(stringArray[1]);
-      switch(this.selectedTimeFrame) {
-        case 1: min = min + 1;
-                break;
-        case 10: min = Math.floor(min / 10) * 10 + 10;
-                 break;
-        default: min = 0;
-                 hour = hour + 1;
-                 break; 
-      }
-      if (min > 59) {
-        hour = hour + 1;
-        min = min - 60;
-      }
-      if (hour > 23) {
-        hour = 23;
-        min = 59;
-      }
-      this.choosenTime = String(hour).padStart(2, '0') + ":" + String(min).padStart(2, '0');
-      this.updateTime();
-    }
-  },
 };
 </script>
 

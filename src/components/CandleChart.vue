@@ -28,7 +28,6 @@
 
 <script>
 import { TradingVue, DataCube } from "trading-vue-js";
-import LinePNL from './LinePNL.js';
 
 export default {
   name: "Chartbox",
@@ -40,8 +39,7 @@ export default {
     "pnl",
     "dataChanged",
     "width",
-    "height",
-    "night",
+    "height"
   ],
   components: {
     TradingVue,
@@ -141,17 +139,6 @@ export default {
       selectedScale: 0,
     };
   },
-  /*
-  // Reset candles
-  dc.set('chart.data', ohlcv)
-
-  // Change the entire chart object
-  dc.set('chart', {
-  type: "Candles",
-  data: [ ... ],
-  settings: {}
-  })  
-  */
 };
 </script>
 

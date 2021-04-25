@@ -53,13 +53,20 @@
                     :styles="lchart_style" />
             </div>
             <div :style="{ width:ptable_width + 'px' }">
-                <positions-table
-                    :optionPrices="optionPrices"
-                    :strategy="strategy"
-                    :price="price"
-                    :dataChanged="positionsChanged"
-                    />
+                <profit-chart
+                    id="profit"
+                    :dataChanged="dataChanged"
+                    :width="ptable_width"
+                    :height="lchart_height"
+                />
             </div>
+        </div>
+        <div>
+            <positions-table
+                :optionPrices="optionPrices"
+                :strategy="strategy"
+                :dataChanged="positionsChanged"
+                />
         </div>
     </div>
 </template>
@@ -68,13 +75,14 @@
 import OptionCard from './OptionCard.vue';
 import PositionsTable from './PositionsTable.vue';
 import Scatter from './LineChart.vue'
+import ProfitChart from './ProfitChart.vue'
 import GBS from './gbs.js'
 
 export default {
     name: "OptionStrategy",
-    components: { OptionCard, Scatter, PositionsTable },
+    components: { OptionCard, Scatter, PositionsTable, ProfitChart },
     emits: ["nodata", "pnl"],
-    props: ["expirationArray", "descriptionArray", "currentEpoch", "price", 
+    props: ["expirationArray", "descriptionArray", "currentEpoch", 
             "optionsData", "dataChanged"],
     data() {
         return {
@@ -130,6 +138,7 @@ export default {
         }
     },
     computed: {
+        lastPrice() { return this.$store.state.candles.lastPrice; },
         lchart_style() {
             return {
                 height: this.lchart_height + 'px',   
@@ -176,7 +185,7 @@ export default {
                 }
                 this.allStrikes = Array.from(strikeSet);
                 this.allStrikes.sort();
-                this.optionPrices[i] = [strikeArray, table, this.$props.price];
+                this.optionPrices[i] = [strikeArray, table, this.lastPrice];
             }
 
             this.positionsChanged = !this.positionsChanged;
@@ -247,13 +256,13 @@ export default {
                 const expirationEpoch = this.optionExpirationEpoch(payload[0], this.$props.descriptionArray);
                 optionTime = (expirationEpoch - this.currentEpoch) / (1000 * 60 * 60 * 24 * 365);
                 let greeks;
-                if (premium > GBS.black_76(payload[1] ? 'c' : 'p', this.$props.price, K, optionTime, 0, 0.005)[0]) {
-                    const v = GBS.euro_implied_vol_76(payload[1] ? 'c' : 'p', this.$props.price, K, optionTime, 0, premium);
-                    greeks = GBS.black_76(payload[1] ? 'c' : 'p', this.$props.price, K, optionTime, 0, v);
+                if (premium > GBS.black_76(payload[1] ? 'c' : 'p', this.lastPrice, K, optionTime, 0, 0.005)[0]) {
+                    const v = GBS.euro_implied_vol_76(payload[1] ? 'c' : 'p', this.lastPrice, K, optionTime, 0, premium);
+                    greeks = GBS.black_76(payload[1] ? 'c' : 'p', this.lastPrice, K, optionTime, 0, v);
                     greeks[0] = v;
                 }
                 else {
-                    greeks = GBS.black_76(payload[1] ? 'c' : 'p', this.$props.price, K, optionTime, 0, 0.005);
+                    greeks = GBS.black_76(payload[1] ? 'c' : 'p', this.lastPrice, K, optionTime, 0, 0.005);
                     greeks[0] = 0.005;
                 }
 

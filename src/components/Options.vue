@@ -30,6 +30,7 @@
                     :optionsDataIndex="optionsDataIndex"
                     :optionsData="optionsData[choosenOption]"
                     :volatilityData="volatilityData[choosenOption]"
+                    :ivData="ivData[choosenOption]"
                     :optionTime="choosenOptionTime"
                     :dataChanged="dataChanged" />
             </b-tab>
@@ -38,7 +39,6 @@
                     :expirationArray="optionsExpirationArray"
                     :descriptionArray="optionsDescriptionArray"
                     :currentEpoch="currentEpoch"
-                    :price="price"
                     :optionsData="optionsData"
                     :dataChanged="dataChanged" 
                     @nodata="loadOptionTable($event)" 
@@ -58,7 +58,6 @@ export default {
     components: {
         OptionsTable, VolatilityCharts, OptionStrategy
     },
-    props: ["choosenDate", "choosenTime", "baseAsset", "price"],
     data() {
         return {
             choosenOption: -1,
@@ -67,14 +66,20 @@ export default {
             optionsDataIndex: 0,
             optionsData: [],
             volatilityData: [],
+            ivData: [],
             dataChanged: false,
             currentEpoch: 0,
             choosenOptionTime: 0.1,
             optionsTableBusy: false,
         };
     },
+    computed: {
+        choosenBaseAsset() { return this.$store.state.candles.choosenBaseAsset; },
+        choosenDate() { return this.$store.state.candles.choosenDate; },
+        choosenTime() { return this.$store.state.candles.choosenTime; },
+    },
     watch: {
-        baseAsset(newAsset, oldAsset) {
+        choosenBaseAsset(newAsset, oldAsset) {
             this.optionsTableBusy = true;
             this.loadOptions()
         },
@@ -82,19 +87,19 @@ export default {
             this.optionsTableBusy = true;
             this.loadOptions()
         },
+        choosenTime(newTime, oldTime) {
+            this.optionsTableBusy = true;
+            this.searchOptionIndex(this.choosenOption);
+        },
         choosenOption(newOption, oldOption) {
             this.optionsTableBusy = true;
             this.loadOptionTable(this.choosenOption);
         },
-        choosenTime(newTime, oldTime) {
-            this.optionsTableBusy = true;
-            this.searchOptionIndex(this.choosenOption);
-        }
   }, 
   methods: {
     loadOptions() {
         const query = "http://localhost:5000/api/v1/options?date=" + 
-            this.choosenDate + "&q=" + this.$props.baseAsset;
+            this.choosenDate + "&q=" + this.choosenBaseAsset;
         this.$axios.get(query)
             .then((response) => {
                 if (response.status === 200) {
@@ -103,7 +108,7 @@ export default {
                 this.optionsExpirationArray = [];
                 this.optionsDescriptionArray = response.data;
                 for (let i = 0; i < response.data.length; i++) {
-                    const cDate = new Date(this.$props.choosenDate);
+                    const cDate = new Date(this.choosenDate);
                     const eDate = new Date(response.data[i][5]);
                     const remain = Math.floor(
                         (eDate.getTime() - cDate.getTime()) / (1000 * 60 * 60 * 24));
@@ -128,6 +133,7 @@ export default {
             this.optionsDataIndex = 0;
             this.optionsData = [];
             this.volatilityData = [];
+            this.ivData = [];
             this.dataChanged = !this.dataChanged;
             this.optionsTableBusy = false;
             return "error";
@@ -151,6 +157,7 @@ export default {
                 this.optionsDataIndex = 0;
                 this.optionsData = [];
                 this.volatilityData = [];
+                this.ivData = [];
                 this.dataChanged = !this.dataChanged;
                 this.optionsTableBusy = false;
                 return "error";
@@ -178,9 +185,11 @@ export default {
                         console.log("Got error: " + response.data);
                         this.optionsData[selected] = [];
                         this.volatilityData[selected] = [];
+                        this.ivData[selected] = [];
                     } else {
                         this.optionsData[selected] = response.data[0];
                         this.volatilityData[selected] = response.data[1];
+                        this.ivData[selected] = response.data[2];
                         console.log("Got options tables [" + this.optionsData[selected].length + "]");
                     }
                     this.searchOptionIndex(selected);
@@ -200,6 +209,7 @@ export default {
                     }
                     this.optionsData[selected] = [];
                     this.volatilityData[selected] = [];
+                    this.ivData[selected] = [];
                     this.optionsDataIndex = 0;
                     this.dataChanged = !this.dataChanged;
                     this.optionsTableBusy = false;
@@ -218,7 +228,7 @@ export default {
         }
 
         const data = this.optionsData[selected];
-        this.currentEpoch = this.getTimeEpoch(data[0]["epoch"], this.$props.choosenTime);
+        this.currentEpoch = this.getTimeEpoch(data[0]["epoch"], this.choosenTime);
 
         const maxIndex = data.length - 1;
         if ((this.currentEpoch >= data[this.optionsDataIndex]["epoch"]) && 
@@ -234,7 +244,7 @@ export default {
         const firstTradingDay = new Date(this.optionsDescriptionArray[selected][4]).valueOf() + timezone;
         let lastTradingDay = new Date(this.optionsDescriptionArray[selected][5]).valueOf() + timezone;
         const tradingDays = (lastTradingDay - firstTradingDay) /(1000 * 60 * 60 * 24);
-        if (tradingDays > 30 && this.$props.baseAsset.startsWith("Si")) lastTradingDay += 14 * 60 * 60 * 1000;
+        if (tradingDays > 30 && this.choosenBaseAsset.startsWith("Si")) lastTradingDay += 14 * 60 * 60 * 1000;
         else  lastTradingDay += 18 * 60 * 60 * 1000 + 50 * 60 * 1000;
 
         this.choosenOptionTime = (lastTradingDay - this.currentEpoch) / (1000 * 60 * 60 * 24 * 365);

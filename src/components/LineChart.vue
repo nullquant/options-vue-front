@@ -7,7 +7,7 @@ const { reactiveProp } = mixins
 export default {
     extends: Scatter,
     mixins: [reactiveProp],
-    props: ['options'],
+    props: ['options', "optionChanged"],
     mounted () {
         //Arguments is an Array of Plugins (https://vue-chartjs.org/api/#addplugin)
         this.addPlugin([chartjsPluginAnnotation]);
@@ -18,8 +18,12 @@ export default {
                                            annotation: Object.assign({}, this.options.annotation)});
     },
     watch: {
-        chartData () {
+        chartData() {
             this.$data._chart.update();
+        },
+        optionChanged() {
+            this.$data._chart.destroy()
+            this.renderChart(this.chartData, this.options);
         }
     }      
 }
