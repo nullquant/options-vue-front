@@ -1,10 +1,34 @@
+// Grin, your overlay friend
+
+// Adds all necessary stuff for you.
 import { Overlay } from 'trading-vue-js'
 
 export default {
-    name: 'LinePNL',
+    name: 'Grin',
     mixins: [Overlay],
     methods: {
-        draw(ctx) { 
+        meta_info() {
+            return {
+                author: 'C451',
+                version: '2.0.0'
+            }
+        },
+        // Here goes your code. You are provided with:
+        // { All stuff is reactive }
+        // $props.layout -> positions of all chart elements +
+        //  some helper functions (see layout_fn.js)
+        // $props.interval -> candlestick time interval
+        // $props.sub -> current subset of candlestick data
+        // $props.data -> your indicator's data subset.
+        //  Comes "as is", should have the following format:
+        //  [[<timestamp>, ... ], ... ]
+        // $props.colors -> colors (see TradingVue.vue)
+        // $props.cursor -> current position of crosshair
+        // $props.settings -> indicator custom settings
+        //  E.g. colors, line thickness, etc. You define it.
+        // ~
+        // Finally, let's make the canvas dirty!
+        draw(ctx) {
             const l = this.$props.layout
             const c = {
                 x: l.width / 2,
@@ -40,6 +64,16 @@ export default {
             var s1 = Math.PI * .1
             var s2 = Math.PI * 0.15
 
+            if (this.woo)
+                for (var k = 0; k < 0.85; k += 0.1) {
+                    ctx.arc(c.x, c.y - 25, 43,
+                        s1 + k * Math.PI,
+                        s1 + (k + 0.01) * Math.PI, false)
+                    ctx.arc(c.x, c.y, 42,
+                        s2 + k * Math.PI,
+                        s2 + (k + 0.01) * Math.PI, false)
+                }
+
             ctx.stroke()
             // Eagle eyes
             ctx.beginPath()
@@ -56,10 +90,28 @@ export default {
             ctx.lineCap = "round"
             ctx.beginPath()
             ctx.lineWidth = 5
+            if (this.woo) {
+                ctx.moveTo(c.x - 25, c.y - 15 + 2)
+                ctx.lineTo(c.x - 10, c.y - 7 + 2)
+                ctx.moveTo(c.x + 25, c.y - 20 + 2)
+                ctx.lineTo(c.x + 10, c.y - 7 + 2)
+            }
             ctx.stroke()
         },
-        use_for() { return ['LinePNL'] },
-        data_colors() { return ['yellow'] },
+
+        // For all data with these types overlay will be
+        // added to the renderer list. And '$props.data'
+        // will have the corresponding values. If you want to
+        // redefine the default behviour for a prticular
+        // indicator (let's say EMA),
+        // just create a new overlay with the same type:
+        // e.g. use_for() { return ['EMA'] }.
+        use_for() {
+            return ['GRIN']
+        },
+        data_colors() {
+            return ['yellow']
+        },
         mousemove(e) {
             const l = this.$props.layout
             const c = {
@@ -75,12 +127,13 @@ export default {
             } else {
                 this.woo = false
             }
-        },    
+        },
     },
     data() {
         // Define internal setting & constants here
         return {
             woo: false
         }
-    }    
+    }
+
 }

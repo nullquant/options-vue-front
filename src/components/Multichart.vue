@@ -2,33 +2,27 @@
   <div class="multi-chart">
     <candlechart
       id="1m"
-      :security="securityName"
+      :title="securityName"
       :scale="0"
-      :ohlcv="ohlcv"
       :pnl="pnl"
-      :dataChanged="dataChanged"
       :width="cbox_width"
       :height="cbox_height"
     >
     </candlechart>
     <candlechart
       id="H"
-      :security="securityName"
+      :title="securityName"
       :scale="5"
-      :ohlcv="ohlcv"
       :pnl="pnl"
-      :dataChanged="dataChanged"
       :width="cbox_width"
       :height="cbox_height"
     >
     </candlechart>
     <candlechart
       id="D"
-      :security="securityName"
+      :title="securityName"
       :scale="6"
-      :ohlcv="ohlcv"
       :pnl="pnl"
-      :dataChanged="dataChanged"
       :width="cbox_width"
       :height="cbox_height"
     >
@@ -48,11 +42,6 @@ export default {
   data() {
     return {
       securityName: "Si",
-      fullData: { "data": [[], [], [], [], [], [], []], 
-               "KC": [[], [], [], [], [], [], []] },
-      ohlcv: { "data": [[], [], [], [], [], [], []], 
-               "KC": [[], [], [], [], [], [], []] },
-      dataChanged: false,
       width: window.innerWidth - 288,
       height: (window.innerWidth - 288) / 4,
     };
@@ -71,16 +60,10 @@ export default {
             this.securityName = this.choosenFutures;
             this.$store.dispatch('candles/loadCandles', [this.choosenFutures, this.choosenDate]);      
         },
-        candlesDataUpdated(newValue, oldValue) {
-            this.ohlcv = this.candlesData;
-            this.dataChanged = !this.dataChanged;
-        },
     },
     computed: {
         choosenDate() { return this.$store.state.candles.choosenDate; },
         choosenFutures() {return this.$store.state.candles.choosenFutures; },
-        candlesData() { return this.$store.state.candles.candlesData; },
-        candlesDataUpdated() { return this.$store.state.candles.candlesDataUpdated; },
         cbox_width() { return Math.floor(this.width / 3); },
         cbox_height() { return Math.floor(this.height); }
       },
