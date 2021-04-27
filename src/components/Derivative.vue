@@ -47,7 +47,7 @@ export default {
         },
         selectedDerivative(newDerivative, oldDerivative) {
             if (newDerivative == null || newDerivative.length === 0) {
-                this.$store.dispatch('candles/setFutures', '');
+                this.$store.dispatch('candles/setFutures', ['', 0]);
             return;
             }
             const query =
@@ -65,10 +65,10 @@ export default {
                             month: "long",
                             year: "numeric",
                         }).slice(0, -3) + " [" + remain + "]";
-                        this.$store.dispatch('candles/setFutures', newDerivative.substring(0, 4));
+                        this.$store.dispatch('candles/setFutures', [newDerivative.substring(0, 4), remain]);
                     } else {
                         console.log("Got error: " + response.data);
-                        this.$store.dispatch('candles/setFutures', '');
+                        this.$store.dispatch('candles/setFutures', ['', 0]);
                         return;
                     }
                 })
@@ -85,7 +85,7 @@ export default {
                         // Something happened in setting up the request that triggered an Error
                         console.log('Error', error.message);
                     }
-                    this.$store.dispatch('candles/setFutures', '');
+                    this.$store.dispatch('candles/setFutures', ['', 0]);
                 });
         },
     },
@@ -97,7 +97,7 @@ export default {
             this.$axios.get(query)
                 .then((response) => {
                     if (response.status === 200) {
-                        console.log("Got "+ this.$props.type +" data [" + 
+                        console.log("Got futures data [" + 
                             response.data.length + "]");
                         this.derivativesArray = [];
                     for (let i = 0; i < response.data.length; i++) {

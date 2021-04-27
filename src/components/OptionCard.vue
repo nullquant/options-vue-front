@@ -91,7 +91,7 @@
 <script>
 export default {
     name: "OptionCard",
-    emits: ["nodata", "quantity"],
+    emits: ["quantity"],
     props: ["title", "expirationArray", "prices", "dataChanged"],
     data() {
         return {
@@ -103,7 +103,7 @@ export default {
             buyWriteArray: [true, false],
             selectedExpiration: 0,
             strikeArray: [],
-            selectedStrike: 0,
+            selectedStrike: -1,
             quantity: 0,
             selectedPrice: 0,
             selectedSpread: 0,
@@ -124,12 +124,14 @@ export default {
     methods: {
         changeExpiration() {
             if (!this.$props.prices || !this.$props.prices[this.selectedExpiration]) {
-                this.$emit("nodata", this.selectedExpiration);
-                this.strikeArray = [];
-                this.selectedStrike = 0;
+                this.$store.dispatch('candles/loadOptionTable', this.selectedExpiration);
+                this.strikeArray = [{ text: 'NO DATA', value: -1, disabled: true}];
+                this.selectedStrike = -1;
             } else {
-                this.strikeArray = this.prices[this.selectedExpiration][0];
-                this.selectedStrike = this.strikeArray.length / 2 - 1;
+                if (this.selectedStrike < 0) {
+                    this.strikeArray = this.prices[this.selectedExpiration][0];
+                    this.selectedStrike = this.strikeArray.length / 2 - 1;
+                }
             }
             this.changeStrike();
         },

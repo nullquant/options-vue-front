@@ -8,8 +8,7 @@
                             title="Option #1" 
                             :expirationArray="expirationArray"
                             :prices="optionPrices"
-                            :dataChanged="dataChanged" 
-                            @nodata="nodata" 
+                            :dataChanged="tablesChanged" 
                             @quantity="changeLeg(0, $event)" />
                     </b-col>
                     <b-col class='px-1'> 
@@ -17,8 +16,7 @@
                             title="Option #2" 
                             :expirationArray="expirationArray"
                             :prices="optionPrices"
-                            :dataChanged="dataChanged"
-                            @nodata="nodata"
+                            :dataChanged="tablesChanged"
                             @quantity="changeLeg(1, $event)" />
                     </b-col>
                     <b-col class='px-1'> 
@@ -26,8 +24,7 @@
                             title="Option #3" 
                             :expirationArray="expirationArray"
                             :prices="optionPrices"
-                            :dataChanged="dataChanged"
-                            @nodata="nodata" 
+                            :dataChanged="tablesChanged"
                             @quantity="changeLeg(2, $event)" />
                     </b-col>
                     <b-col class='px-1'> 
@@ -35,12 +32,13 @@
                             title="Option #4" 
                             :expirationArray="expirationArray"
                             :prices="optionPrices"
-                            :dataChanged="dataChanged"
-                            @nodata="nodata" 
+                            :dataChanged="tablesChanged"
                             @quantity="changeLeg(3, $event)" />
                     </b-col>
                     <b-col class='px-1'> 
-                        <option-card title="Futures" /> 
+                        <futures-card 
+                            title="Futures" 
+                            @quantity="changeLeg(4, $event)" /> 
                     </b-col>
                 </b-row>
             </b-container>
@@ -57,7 +55,7 @@
                     id="profit"
                     :payoffData="payoffData"
                     :payoffEpochs="payoffEpochs"
-                    :dataChanged="profitChartChanged"
+                    :dataChanged="tabChanged"
                     :width="ptable_width"
                     :height="lchart_height"
                 />
@@ -75,6 +73,7 @@
 
 <script>
 import OptionCard from './OptionCard.vue';
+import FuturesCard from './FuturesCard.vue';
 import PositionsTable from './PositionsTable.vue';
 import Scatter from './LineChart.vue'
 import ProfitChart from './ProfitChart.vue'
@@ -82,23 +81,21 @@ import GBS from './gbs.js'
 
 export default {
     name: "OptionStrategy",
-    components: { OptionCard, Scatter, PositionsTable, ProfitChart },
-    emits: ["nodata", "pnl"],
-    props: ["expirationArray", "descriptionArray", "currentEpoch", 
-            "optionsData", "dataChanged"],
+    components: { OptionCard, FuturesCard, Scatter, PositionsTable, ProfitChart },
+    props: ["expirationArray", "tabChanged"],
     data() {
         return {
             optionPrices: [],
             allStrikes: [],
             strategy: [[], [], [], [], []],
+            tablesChanged: false,
             positionsChanged: false,
-            profitChartChanged: false,
             payoffData: [],
             payoffCurve: {},
             payoffEpochs: [],
             payoffDays: 15,
             width: window.innerWidth - 320,
-            height: (window.innerWidth - 320) * 0.25,
+            height: (window.innerWidth - 320) * 0.20,
             chartSettings: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -144,6 +141,11 @@ export default {
     },
     computed: {
         lastPrice() { return this.$store.state.candles.lastPrice; },
+        currentEpoch() { return this.$store.state.candles.currentEpoch; },
+        optionsDescriptionArray() { return this.$store.state.candles.optionsDescriptionArray; },
+        optionsDescriptionUpdated() { return this.$store.state.candles.optionsDescriptionUpdated; },
+        optionsTables() { return this.$store.state.candles.optionsTables; },
+        optionsDataUpdated() { return this.$store.state.candles.optionsDataUpdated; },
         lchart_style() {
             return {
                 height: this.lchart_height + 'px',   
@@ -155,28 +157,27 @@ export default {
         lchart_height() { return Math.floor(this.height); },
     },  
     watch: {
-        dataChanged(newData, oldData) {
+        optionsDataUpdated(newData, oldData) {
             this.parseOptionData();
-            this.profitChartChanged = !this.profitChartChanged;
         },
     },
     methods: {
         parseOptionData() {
-            if (!this.$props.optionsData) {
+            if (!this.optionsTables || this.optionsTables.length === 0) {
                 this.optionPrices = [];
+                this.tablesChanged = !this.tablesChanged;
                 return;
             }
             // cycle over all options (by expiration)
-            for (let i=0; i<this.$props.optionsData.length; i++) {
-                if (!this.$props.optionsData[i]) continue;
+            for (let i=0; i<this.optionsTables.length; i++) {
+                if (!this.optionsTables[i]) continue;
 
-                if (this.$props.optionsData[i].length === 0) {
+                if (this.optionsTables[i].length === 0) {
                     this.optionPrices[i] = [[], []];
                     continue;
                 }
 
-                let index = this.findIndex(this.$props.optionsData[i], this.$props.currentEpoch);
-                const slicedTable = this.$props.optionsData[i][index]['option_table'];
+                const slicedTable = this.optionsTables[i]['option_table'];
                 const table = slicedTable.map(a => Object.assign({}, a));
 
                 let strikeSet = new Set();
@@ -185,7 +186,7 @@ export default {
                 for (let x=0; x<table.length; x++) {
                     strikeSet.add(table[x]['strike']);
                     if (x === table.length / 2) 
-                        strikeArray.push({html: '<b>'+table[x]['strike']+'</b>', value: x});
+                        strikeArray.push({text: table[x]['strike'], value: x});
                     else strikeArray.push({text: table[x]['strike'], value: x});
                 }
                 this.allStrikes = Array.from(strikeSet);
@@ -199,24 +200,7 @@ export default {
                     this.payoffEpochs.push(this.getTimeEpoch(this.currentEpoch, "18:50") + epoch24hours * i);
             }
 
-            this.positionsChanged = !this.positionsChanged;
-        },
-        findIndex(data, epoch) {
-            let low = 0;
-            let high = data.length;
-            if (data[low]["epoch"] >= epoch) return low;
-            let index = Math.floor((low + high) / 2);
-            while(high - low > 1) {
-                if (data[index]["epoch"] === epoch) return index;
-                if (data[index]["epoch"] < epoch) low = index;
-                else high = index;
-                index = Math.floor((low + high) / 2);
-            }
-            if (data[high]["epoch"] === epoch) return high; 
-            return low;
-        },
-        nodata(payload) {
-            this.$emit("nodata", payload);
+            this.tablesChanged = !this.tablesChanged;
         },
         changeLeg(index, payload) {
             this.payoffCurve= { datasets: [{
@@ -257,15 +241,22 @@ export default {
                     pointStyle: "circle"
             } ]};
 
+            if (!this.optionsTables || this.optionsTables.length === 0) {
+                return;
+            }
+
             // payload: expiration index, call?, buy?, strike, price, spread, quantity
-            let K, premium, optionTime;
+            let K, premium;
             if (payload.length === 0 || payload[6] === 0) this.strategy[index] = [];
-            else {
+            else if (index === 4) {
+                this.strategy[index] = [payload[0], 0, 'Futures', payload[2], '', payload[4], 0, payload[6], 
+                                        0, 1, 0, 0, 0, 0, payload[1]];
+            } else {
                 K = parseFloat(payload[3]);
                 premium = parseFloat(payload[4]);
 
-                const expirationEpoch = this.optionExpirationEpoch(payload[0], this.$props.descriptionArray);
-                optionTime = (expirationEpoch - this.currentEpoch) / (1000 * 60 * 60 * 24 * 365);
+                const expirationEpoch = this.optionsTables[payload[0]]['expirationEpoch'];
+                const optionTime = (expirationEpoch - this.currentEpoch) / (1000 * 60 * 60 * 24 * 365);
                 let greeks;
                 if (premium > GBS.black_76(payload[1] ? 'c' : 'p', this.lastPrice, K, optionTime, 0, 0.005)[0]) {
                     const v = GBS.euro_implied_vol_76(payload[1] ? 'c' : 'p', this.lastPrice, K, optionTime, 0, premium);
@@ -277,9 +268,15 @@ export default {
                     greeks[0] = 0.005;
                 }
 
-                const nameArray = this.$props.descriptionArray[payload[0]][1].split('_');
-                const secid = nameArray[0] + payload[3] + (payload[1] ? nameArray[1] : nameArray[2]);
+                if (!payload[2]) {
+                    for (let i=1; i<greeks.length; i++) {
+                        greeks[i] = - greeks[i];
+                    }
+                }
 
+                const nameArray = this.optionsDescriptionArray[payload[0]][1].split('_');
+                const secid = nameArray[0] + payload[3] + (payload[1] ? nameArray[1] : nameArray[2]);
+            
                 let times = [];
                 for (let i = 0; i < this.payoffDays; i++) {
                     const t = (expirationEpoch - this.payoffEpochs[i]) / (1000 * 60 * 60 * 24 * 365);
@@ -353,16 +350,6 @@ export default {
             this.profitChartChanged = !this.profitChartChanged;
 
             linePNL.sort(function(a,b){ return a[0] < b[0] ? -1 : 1; });
-            this.$emit("pnl", linePNL);
-        },
-        optionExpirationEpoch(selectedOption, optionDescriptionArray) {
-            const timezone = new Date(1970, 0, 1).getTime();
-            const firstTradingDayEpoch = new Date(optionDescriptionArray[selectedOption][4]).valueOf() + timezone;
-            let lastTradingDayEpoch = new Date(optionDescriptionArray[selectedOption][5]).valueOf() + timezone;
-            const tradingDays = (lastTradingDayEpoch - firstTradingDayEpoch) /(1000 * 60 * 60 * 24);
-            if (tradingDays > 30 && optionDescriptionArray[selectedOption][1].startsWith("Si")) lastTradingDayEpoch += 14 * 60 * 60 * 1000;
-            else  lastTradingDayEpoch += 18 * 60 * 60 * 1000 + 50 * 60 * 1000;
-            return lastTradingDayEpoch;
         },
         getTimeEpoch(oldEpoch, newTime) {
             const lastDate = new Date(oldEpoch);
@@ -373,7 +360,7 @@ export default {
         },        
         onResize(event) {
             this.width = window.innerWidth - 320;
-            this.height = this.width * 0.25;
+            this.height = this.width * 0.22;
         },
     },
     mounted() {

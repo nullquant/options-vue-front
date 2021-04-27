@@ -43,8 +43,7 @@ export default {
     components: {
         Scatter,
     },
-    props: ["optionsDataIndex", "optionsData", "volatilityData", "ivData",
-            "optionTime", "dataChanged"],
+    props: ["choosenOption"],
     data() {
         return {
             volatilityCurveData: {},
@@ -125,6 +124,11 @@ export default {
         };
     },
     computed: {
+        currentEpoch() { return this.$store.state.candles.currentEpoch; },
+        optionsTables() { return this.$store.state.candles.optionsTables; },
+        volatilityData() { return this.$store.state.candles.volatilityData; },
+        ivData() { return this.$store.state.candles.ivData; },
+        optionsDataUpdated() { return this.$store.state.candles.optionsDataUpdated; },
         lchart_style() {
             return {
                 height: this.lchart_height + 'px',   
@@ -135,7 +139,11 @@ export default {
         lchart_height() { return Math.floor(this.height); },
     },  
     watch: {
-        dataChanged(newData, oldData) {
+        choosenOption(newValue, oldValue) {
+            this.volatilityCurve();
+            this.volatilityHistory();
+        },
+        optionsDataUpdated(newData, oldData) {
             this.volatilityCurve();
             this.volatilityHistory();
         },
@@ -187,11 +195,13 @@ export default {
                     pointStyle: "triangle",
                     rotation: 180
                 } ]};
-            if (!this.$props.optionsData || !this.$props.optionsData[this.$props.optionsDataIndex]) return;
+            if (this.$props.choosenOption < 0) return [];
+            if (!this.optionsTables || !this.optionsTables[this.$props.choosenOption]) return;
 
-            const slicedTable = this.$props.optionsData[this.$props.optionsDataIndex]["option_table"];
-            const fs = parseFloat(this.$props.optionsData[this.$props.optionsDataIndex]["asset"]);
-            const t = this.$props.optionTime;
+            const slicedTable = this.optionsTables[this.$props.choosenOption]["option_table"];
+            const fs = parseFloat(this.optionsTables[this.$props.choosenOption]["asset"]);
+            const t = (this.optionsTables[this.$props.choosenOption]["expirationEpoch"] - this.currentEpoch) / 
+                        (1000 * 60 * 60 * 24 * 365);
 
             var moexData = [];
             var maxVolatility = 0;
@@ -261,7 +271,7 @@ export default {
                     borderColor: '#4BC0C050',
                     data: [],
                     pointRadius: 2,
-                    lineTension: 0,
+                    lineTension: 0.1,
                 }, {
                     type: 'line',
                     label: 'Historic IV',
@@ -269,37 +279,39 @@ export default {
                     borderColor: '#4BC0C0',
                     data: [],
                     pointRadius: 2,
-                    lineTension: 0,
+                    lineTension: 0.1,
                     spanGaps: false
-                }];
-            if (!this.$props.volatilityData || !this.$props.ivData) return;
-
-            let epoch = this.$props.volatilityData[this.$props.volatilityData.length - 1][0] -
+            }];
+        
+            if (!this.volatilityData || this.volatilityData.length === 0 || 
+                !this.ivData || this.ivData.length === 0) return;
+ 
+            let epoch = this.volatilityData[this.volatilityData.length - 1][0] -
                         this.selectedRange * 1000 * 60 * 60 * 24 * 30;
             this.timeChartSettings['scales']['xAxes'][0]['ticks']['min'] = epoch;
 
-            var minV = this.$props.volatilityData[this.$props.volatilityData.length - 1][1];
-            var maxV = this.$props.volatilityData[this.$props.volatilityData.length - 1][1];
+            var minV = this.volatilityData[this.volatilityData.length - 1][1];
+            var maxV = this.volatilityData[this.volatilityData.length - 1][1];
 
             var vhData = []
-            for (let i=0; i<this.$props.volatilityData.length; i++) {
-                vhData.push({x: this.$props.volatilityData[i][0], y: this.$props.volatilityData[i][1]});
-                if (this.$props.volatilityData[i][0] >= epoch) {
-                    if (!isNaN(this.$props.volatilityData[i][1])) {
-                        minV = Math.min(minV, this.$props.volatilityData[i][1]);
-                        maxV = Math.max(maxV, this.$props.volatilityData[i][1]);
+            for (let i=0; i<this.volatilityData.length; i++) {
+                vhData.push({x: this.volatilityData[i][0], y: this.volatilityData[i][1]});
+                if (this.volatilityData[i][0] >= epoch) {
+                    if (!isNaN(this.volatilityData[i][1])) {
+                        minV = Math.min(minV, this.volatilityData[i][1]);
+                        maxV = Math.max(maxV, this.volatilityData[i][1]);
                     }
                 }
             }
             
             var ivhData = []
-            for (let i=0; i<this.$props.ivData[this.selectedWeek].length; i++) {
-                ivhData.push({x: this.$props.ivData[this.selectedWeek][i][0], 
-                              y: this.$props.ivData[this.selectedWeek][i][1]});
-                if (this.$props.ivData[this.selectedWeek][i][0] >= epoch) {
-                    if (!isNaN(this.$props.ivData[this.selectedWeek][i][1])) {
-                        minV = Math.min(minV, this.$props.ivData[this.selectedWeek][i][1]);
-                        maxV = Math.max(maxV, this.$props.ivData[this.selectedWeek][i][1]);
+            for (let i=0; i<this.ivData[this.selectedWeek].length; i++) {
+                ivhData.push({x: this.ivData[this.selectedWeek][i][0], 
+                              y: this.ivData[this.selectedWeek][i][1]});
+                if (this.ivData[this.selectedWeek][i][0] >= epoch) {
+                    if (!isNaN(this.ivData[this.selectedWeek][i][1])) {
+                        minV = Math.min(minV, this.ivData[this.selectedWeek][i][1]);
+                        maxV = Math.max(maxV, this.ivData[this.selectedWeek][i][1]);
                     }
                 }
             }
@@ -311,18 +323,6 @@ export default {
             this.timeChartSettings['scales']['yAxes'][0]['ticks']['max'] = maxV * 1.1;
 
             this.volatilityUpdate = !this.volatilityUpdate;
-        },
-        findIndex(dataArray, epoch) {
-            let left = 0;
-            let right = dataArray.length;
-            let index = Math.floor((left + right) / 2);
-            while(right - left > 1) {
-                if (dataArray[index][0] === epoch) return index;
-                if (dataArray[index][0] < epoch) left = index;
-                else right = index;
-                index = Math.floor((left + right) / 2);
-            }
-            return left;
         },
         onResize(event) {
             this.width = window.innerWidth - 320;

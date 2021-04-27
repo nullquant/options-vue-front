@@ -58,7 +58,7 @@ export default {
                 return;
             }
             this.securityName = this.choosenFutures;
-            this.$store.dispatch('candles/loadCandles', [this.choosenFutures, this.choosenDate]);      
+            this.$store.dispatch('candles/loadCandles');      
         },
     },
     computed: {

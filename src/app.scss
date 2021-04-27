@@ -126,10 +126,10 @@
   border-color: #434651;
 }
 
-.card {
+.custom-select:disabled {
+  color: #1E222D;
   background-color: #1E222D;
-  background-clip: border-box;
-  border: 1px solid #434651;  
+  border-color: #1E222D;
 }
 
 a {

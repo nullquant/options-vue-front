@@ -1,5 +1,5 @@
 <template>
-    <div class="table">
+    <div style="position: relative;">
         <b-table 
             ref="otable"
             :fields="fields"
@@ -21,6 +21,9 @@
                 </div>
             </template>          
         </b-table>
+        <div style="position: absolute; top: 5px; right: 15px">
+            {{ optionsTableTime }}
+        </div>
     </div>
 </template>
 
@@ -28,8 +31,7 @@
 export default {
     name: "OptionsPanel",
     components: {},
-    props: ["optionsDataIndex", "optionsData", "currentEpoch", 
-            "tableBusy", "dataChanged"],
+    props: ["choosenOption", "tableBusy"],
     data() {
         return {
             fields: [
@@ -48,21 +50,35 @@ export default {
                 { key: 'put_oi', label: 'OI' }
             ],
             optionsTable: [],
+            optionsTableTime: '27.04.2021 12:33:07'
         }
     },
+    computed: {
+        currentEpoch() { return this.$store.state.candles.currentEpoch; },
+        optionsTables() { return this.$store.state.candles.optionsTables; },
+        optionsDataUpdated() { return this.$store.state.candles.optionsDataUpdated; },
+    },
     watch: {
-        dataChanged(newData, oldData) {
+        choosenOption(newValue, oldValue) {
             this.optionsTable = this.parseOptionData();
-            this.$refs.otable.refresh()
+            this.$refs.otable.refresh();
+        },
+        optionsDataUpdated(newData, oldData) {
+            this.optionsTable = this.parseOptionData();
+            this.$refs.otable.refresh();
         },
     },
     methods: {
         parseOptionData() {
-            if (!this.$props.optionsData[this.$props.optionsDataIndex]) return [];
+            if (this.$props.choosenOption < 0) return [];
+            if (!this.optionsTables || !this.optionsTables[this.$props.choosenOption]) return;
 
-            const slicedTable = this.$props.optionsData[this.$props.optionsDataIndex]["option_table"];
+            const slicedTable = this.optionsTables[this.$props.choosenOption]["option_table"];
+            this.optionsTableTime = (new Date(this.optionsTables[this.$props.choosenOption]["epoch"]))
+                                    .toLocaleString();
+
             let table = slicedTable.map(a => Object.assign({}, a));
-            const epoch = this.$props.currentEpoch;
+            const epoch = this.currentEpoch;
             
             for (let i=0; i<table.length; i++) {
                 table[i]["call_last"] = this.lastPriceString(table[i]["call_last"], epoch, table[i]["call_last_time"]);

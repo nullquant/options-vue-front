@@ -44,7 +44,6 @@ export default {
     },
     watch: {
         dataChanged(newData, oldData) {
-            
             this.positionsTable = [];
             let summary = {'secid': '', 'type': '', 'direction': '', 'strike': '', 'iv': '', 
                            'delta': 0, 'gamma': 0, 'theta': 0, 'vega': 0, 'ev': 0, 'dte': '',
@@ -56,6 +55,34 @@ export default {
                 // strategy[0..4] :
                 // secid, expiration index, call?, buy?, strike, price, spread, quantity
                 // volatility, delta, gamma, theta, vega, rho, dte, t for evening clearings
+
+                if (i === 4) {
+                    this.positionsTable.push({ 
+                        "secid": leg[0].startsWith('si') ? 'Si' + leg[0].toUpperCase().substr(2) : leg[0].toUpperCase(),
+                        "type": "Futures",
+                        "direction": leg[3] ? "Buy" : "Sell",
+                        "strike": '',
+                        "iv": '',
+                        "delta": '1.0',
+                        "gamma": '0.0',
+                        "theta": '0.0',
+                        "vega": '0.0',
+                        "ev": '0.0',
+                        "dte": leg[14],
+                        "open_price": leg[3] ? parseFloat(leg[5]) : -parseFloat(leg[5]),
+                        "quantity": leg[7],
+                        "close_price": '',
+                        "pnl": ''
+                    });
+
+                    summary['delta'] += 1.0;
+                    summary['open_price'] += leg[3] ? parseFloat(leg[5]) : -parseFloat(leg[5]);
+
+                    continue;
+                }
+
+                const ev = leg[5] - (leg[2] ? Math.max(0, this.lastPrice - leg[4]) : Math.max(0, leg[4] - this.lastPrice));
+
                 this.positionsTable.push({ 
                     "secid": leg[0].startsWith('si') ? 'Si' + leg[0].toUpperCase().substr(2) : leg[0].toUpperCase(),
                     "type": leg[2] ? "Call" : "Put",
@@ -66,9 +93,9 @@ export default {
                     "gamma": Math.abs(leg[10]) > 0.01 ? leg[10].toFixed(3) : leg[10].toExponential(2),
                     "theta": Math.abs(leg[11]/365) > 1 ? (leg[11]/365).toFixed(0) : (leg[11]/365).toFixed(3),
                     "vega": Math.abs(leg[12]) > 1 ? leg[12].toFixed(0) : leg[12].toFixed(3),
-                    "ev": leg[5] - (leg[2] ? Math.max(0, this.lastPrice - leg[4]) : Math.max(0, leg[4] - this.lastPrice)),
+                    "ev": leg[3] ? ev : -ev,
                     "dte": leg[14].toFixed(0),
-                    "open_price": leg[5],
+                    "open_price": leg[3] ? parseFloat(leg[5]) : -parseFloat(leg[5]),
                     "quantity": leg[7],
                     "close_price": '',
                     "pnl": ''
@@ -78,8 +105,8 @@ export default {
                 summary['gamma'] += leg[10];
                 summary['theta'] += leg[11] / 365;
                 summary['vega'] += leg[12];
-                summary['ev'] += leg[5] - (leg[2] ? Math.max(0, this.lastPrice - leg[4]) : Math.max(0, leg[4] - this.lastPrice));
-                summary['open_price'] += parseFloat(leg[5]);
+                summary['ev'] += leg[3] ? ev : -ev;
+                summary['open_price'] += leg[3] ? parseFloat(leg[5]) : -parseFloat(leg[5]);
             }
 
             summary['delta'] = summary['delta'].toFixed(3);

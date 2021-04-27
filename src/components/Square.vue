@@ -37,7 +37,7 @@ export default {
                 if (p[5][0] === '-') return [{ value: p[5], color: "rgb(229,65,80)"}];
                 else return [{ value: p[5], color: "rgba(35,167,118)"}];
             }
-            return [{ value: values[5], color: values[4] }];
+            return [{ value: values[5], color: values[5][0] === '-' ? "rgb(229,65,80)" : "rgba(35,167,118)"}];
         },
     },
     computed: {
