@@ -89,7 +89,7 @@
 <script>
 export default {
     name: "FuturesCard",
-    emits: ["nodata", "quantity"],
+    emits: ["nodata", "clear"],
     props: ["title"],
     data() {
         return {
@@ -121,6 +121,9 @@ export default {
         },
         quantity(newData, oldData) {
             this.sendLeg();
+        },
+        clear(newData, oldData) {
+            this.quantity = 0;
         }
     },
     methods: {

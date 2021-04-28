@@ -14,11 +14,11 @@
             :color-grid="colors.colorGrid"
             :color-text="colors.colorText" />
         <div class="scale-box">
-        <b-form-select
-            size="sm"
-            v-model="selectedScale"
-            :options="scalesArray"
-            @input="updateScale" />
+            <b-form-select
+                size="sm"
+                v-model="selectedScale"
+                :options="scalesArray"
+                @input="updateScale" />
         </div>
     </div>
 </template>
@@ -28,7 +28,7 @@ import { TradingVue, DataCube } from "trading-vue-js";
 
 export default {
     name: "Chartbox",
-    props: [ "id", "title", "scale", "pnl", "width", "height" ],
+    props: [ "id", "title", "scale", "width", "height" ],
     components: { TradingVue, },
     data() { 
         return { 
@@ -85,13 +85,13 @@ export default {
             this.dataCube.set("chart.tf", this.scalesArray[this.selectedScale]["text"]);
             this.dataCube.set('onchart.KC.data', this.candlesData["KC"][this.selectedScale])
 
+            /*if (!this.$props.pnl || this.$props.pnl.length < 2) return;
+
             const length = this.candlesData["data"][this.selectedScale].length;
             if (length < 2) return;
                 
             let epoch = this.candlesData["data"][this.selectedScale][length-1][0];
             epoch = 2 * epoch - this.candlesData["data"][this.selectedScale][length-2][0];
-
-            if (!this.$props.pnl || this.$props.pnl.length < 2) return;
 
             this.dataCube.del('LinePNL');
             
@@ -113,7 +113,7 @@ export default {
                         lineWidth: 3,
                         legend: false,
                         color: color }});
-            }
+            }*/
 
             this.$refs.tradingVue.resetChart();
         },

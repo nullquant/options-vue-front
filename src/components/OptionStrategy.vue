@@ -1,72 +1,74 @@
 <template>
-    <div>
-        <div style="padding: 10px 0px 10px 0px;">
-            <b-container fluid>
-                <b-row cols=5 class='px-2'>
-                    <b-col class='px-1'> 
-                        <option-card 
-                            title="Option #1" 
-                            :expirationArray="expirationArray"
-                            :prices="optionPrices"
-                            :dataChanged="tablesChanged" 
-                            @quantity="changeLeg(0, $event)" />
-                    </b-col>
-                    <b-col class='px-1'> 
-                        <option-card 
-                            title="Option #2" 
-                            :expirationArray="expirationArray"
-                            :prices="optionPrices"
-                            :dataChanged="tablesChanged"
-                            @quantity="changeLeg(1, $event)" />
-                    </b-col>
-                    <b-col class='px-1'> 
-                        <option-card 
-                            title="Option #3" 
-                            :expirationArray="expirationArray"
-                            :prices="optionPrices"
-                            :dataChanged="tablesChanged"
-                            @quantity="changeLeg(2, $event)" />
-                    </b-col>
-                    <b-col class='px-1'> 
-                        <option-card 
-                            title="Option #4" 
-                            :expirationArray="expirationArray"
-                            :prices="optionPrices"
-                            :dataChanged="tablesChanged"
-                            @quantity="changeLeg(3, $event)" />
-                    </b-col>
-                    <b-col class='px-1'> 
-                        <futures-card 
-                            title="Futures" 
-                            @quantity="changeLeg(4, $event)" /> 
-                    </b-col>
-                </b-row>
-            </b-container>
-        </div>
-        <div class="strategy-chart" :style="{ height:lchart_height + 'px' }">
-            <div :style="{ width:lchart_width + 'px' }">
-                <scatter
-                    :chart-data="payoffCurve"
-                    :options="chartSettings"
-                    :styles="lchart_style" />
-            </div>
-            <div :style="{ width:ptable_width + 'px' }">
-                <profit-chart
-                    id="profit"
-                    :payoffData="payoffData"
-                    :payoffEpochs="payoffEpochs"
-                    :dataChanged="tabChanged"
-                    :width="ptable_width"
-                    :height="lchart_height"
-                />
-            </div>
+    <div class="strategy">
+        <div>
+            <option-card
+                title="Option #1" 
+                :expirationArray="expirationArray"
+                :prices="optionPrices"
+                :dataChanged="tablesChanged"
+                :clear="positionExecuted"
+                @quantity="changeLeg(0, $event)" />
+            <option-card 
+                title="Option #2" 
+                :expirationArray="expirationArray"
+                :prices="optionPrices"
+                :dataChanged="tablesChanged"
+                :clear="positionExecuted"
+                @quantity="changeLeg(1, $event)" />
+            <option-card 
+                title="Option #3" 
+                :expirationArray="expirationArray"
+                :prices="optionPrices"
+                :dataChanged="tablesChanged"
+                :clear="positionExecuted"
+                @quantity="changeLeg(2, $event)" />
+            <option-card 
+                title="Option #4" 
+                :expirationArray="expirationArray"
+                :prices="optionPrices"
+                :dataChanged="tablesChanged"
+                :clear="positionExecuted"
+                @quantity="changeLeg(3, $event)" />
+            <futures-card 
+                title="Futures" 
+                :clear="positionExecuted"
+                @quantity="changeLeg(4, $event)" /> 
         </div>
         <div>
-            <positions-table
-                :optionPrices="optionPrices"
-                :strategy="strategy"
-                :dataChanged="positionsChanged"
-                />
+            <div class="strategy-chart" :style="{ height:lchart_height + 'px' }">
+                <div :style="{ width:lchart_width + 'px' }">
+                    <scatter
+                        :chart-data="payoffCurve"
+                        :options="chartSettings"
+                        :styles="lchart_style" />
+                </div>
+                <div :style="{ width:ptable_width + 'px' }">
+                    <profit-chart
+                        id="profit"
+                        :allStrikes="allStrikes"
+                        :dataChanged="tabChanged"
+                        :width="ptable_width"
+                        :height="lchart_height"
+                    />
+                </div>
+            </div>
+            <div>
+                <positions-table
+                    :optionPrices="optionPrices"
+                    :strategy="strategy"
+                    :dataChanged="positionsChanged + tablesChanged"
+                    />
+            </div>
+        </div>
+        <div class="close-position-button">
+            <b-button @click="closePosition">
+                Close Position
+            </b-button>
+        </div>
+        <div class="open-position-button">
+            <b-button @click="execute">
+                Execute
+            </b-button>
         </div>
     </div>
 </template>
@@ -88,14 +90,12 @@ export default {
             optionPrices: [],
             allStrikes: [],
             strategy: [[], [], [], [], []],
-            tablesChanged: false,
-            positionsChanged: false,
-            payoffData: [],
+            tablesChanged: 0,
+            positionsChanged: 0,
+            positionExecuted: 0,
             payoffCurve: {},
-            payoffEpochs: [],
-            payoffDays: 15,
-            width: window.innerWidth - 320,
-            height: (window.innerWidth - 320) * 0.20,
+            width: window.innerWidth - 680,
+            height: (window.innerWidth - 680) * 0.22,
             chartSettings: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -123,19 +123,6 @@ export default {
                         },
                     }]
                 },
-                annotation: {
-                    annotations: [ {
-                        drawTime: "afterDatasetsDraw",
-                        id: "hline",
-                        type: "line",
-                        mode: "vertical",
-                        scaleID: "x-axis-0",
-                        borderColor: "#f00",
-                        value: parseFloat("76142"),
-                        borderDash: [4, 4],
-                        borderWidth: 5,
-                    }, ],
-                },                
             },
         }
     },
@@ -146,6 +133,8 @@ export default {
         optionsDescriptionUpdated() { return this.$store.state.candles.optionsDescriptionUpdated; },
         optionsTables() { return this.$store.state.candles.optionsTables; },
         optionsDataUpdated() { return this.$store.state.candles.optionsDataUpdated; },
+        positions() { return this.$store.state.candles.positions; },
+        positionsUpdated() { return this.$store.state.candles.positionsUpdated; },
         lchart_style() {
             return {
                 height: this.lchart_height + 'px',   
@@ -157,23 +146,24 @@ export default {
         lchart_height() { return Math.floor(this.height); },
     },  
     watch: {
-        optionsDataUpdated(newData, oldData) {
-            this.parseOptionData();
-        },
+        optionsDataUpdated(newData, oldData) { this.parseOptionData(); },
+        positionsUpdated(newdata, oldData) { this.payoffUpdate(); }
     },
     methods: {
         parseOptionData() {
+            console.log("OS: parseOptionData");
             if (!this.optionsTables || this.optionsTables.length === 0) {
                 this.optionPrices = [];
                 this.tablesChanged = !this.tablesChanged;
                 return;
             }
             // cycle over all options (by expiration)
+            this.optionPrices = [];
             for (let i=0; i<this.optionsTables.length; i++) {
                 if (!this.optionsTables[i]) continue;
 
                 if (this.optionsTables[i].length === 0) {
-                    this.optionPrices[i] = [[], []];
+                    this.optionPrices[i] = [[], 0];
                     continue;
                 }
 
@@ -181,28 +171,150 @@ export default {
                 const table = slicedTable.map(a => Object.assign({}, a));
 
                 let strikeSet = new Set();
-                let strikeArray = []
-                // cycle over option table rows (strikes)
                 for (let x=0; x<table.length; x++) {
                     strikeSet.add(table[x]['strike']);
-                    if (x === table.length / 2) 
-                        strikeArray.push({text: table[x]['strike'], value: x});
-                    else strikeArray.push({text: table[x]['strike'], value: x});
                 }
                 this.allStrikes = Array.from(strikeSet);
                 this.allStrikes.sort();
-                this.optionPrices[i] = [strikeArray, table, this.lastPrice];
+                this.optionPrices[i] = [table, this.lastPrice];
             }
-
-            this.payoffEpochs = [];
-            const epoch24hours = 1000 * 60 * 60 * 24;
-            for (let i = 0; i < this.payoffDays; i++) {
-                    this.payoffEpochs.push(this.getTimeEpoch(this.currentEpoch, "18:50") + epoch24hours * i);
-            }
-
-            this.tablesChanged = !this.tablesChanged;
+            this.tablesChanged += 1;
         },
         changeLeg(index, payload) {
+            console.log("OS: changeLeg "+index);
+            if (!this.optionsTables || this.optionsTables.length === 0) {
+                return;
+            }
+
+            // payload: expiration index, call?, buy?, strike, price, spread, quantity
+            if (payload.length === 0 || payload[6] === 0) this.strategy[index] = [];
+            else {
+                if (index === 4) {
+                    this.strategy[index] = {
+                        'secid': payload[0],
+                        'opened': false,
+                        'index': 0,
+                        'expiration': '',
+                        'dte': payload[1],
+                        'call?': 'F',
+                        'buy?': payload[2],
+                        'strike': '',
+                        'open_price': payload[4],
+                        'spread': 0,
+                        'quantity': payload[6],
+                        'greeks': [0,1,0,0,0,0],
+                        'ev': '',
+                        'close_price': this.lastPrice,
+                    }
+                } else {
+                    let K = parseFloat(payload[3]);
+                    let premium = parseFloat(payload[4]);
+
+                    const expirationEpoch = this.optionsTables[payload[0]]['expirationEpoch'];
+                    const optionTime = (expirationEpoch - this.currentEpoch) / (1000 * 60 * 60 * 24 * 365);
+                    let greeks;
+                    if (premium > GBS.black_76(payload[1] ? 'c' : 'p', this.lastPrice, K, optionTime, 0, 0.005)[0]) {
+                        const v = GBS.euro_implied_vol_76(payload[1] ? 'c' : 'p', this.lastPrice, K, optionTime, 0, premium);
+                        greeks = GBS.black_76(payload[1] ? 'c' : 'p', this.lastPrice, K, optionTime, 0, v);
+                        greeks[0] = v;
+                    }
+                    else {
+                        greeks = GBS.black_76(payload[1] ? 'c' : 'p', this.lastPrice, K, optionTime, 0, 0.005);
+                        greeks[0] = 0.005;
+                    }
+
+                    if (!payload[2]) {
+                        for (let i=1; i<greeks.length; i++) {
+                            greeks[i] = - greeks[i];
+                        }
+                    }
+
+                    const nameArray = this.optionsDescriptionArray[payload[0]][1].split('_');
+                    const secid = nameArray[0] + payload[3] + (payload[1] ? nameArray[1] : nameArray[2]);
+                    let ev = payload[4] - (payload[1] ? 
+                            Math.max(0, this.lastPrice - payload[3]) : 
+                            Math.max(0, payload[3] - this.lastPrice));
+                    if (!payload[2]) ev = -ev;
+
+                    let closePrice = '';
+                    const table = this.optionPrices[payload[0]][0];
+                    for (let i = 0; i < table.length; i++) {
+                        if (table[i]['strike'] === payload[3]) {
+                            if (payload[1]) closePrice = payload[2] ? table[i]['call_bid'] : table[i]['call_ask'];
+                            else closePrice = payload[2] ? table[i]['put_bid'] : table[i]['put_ask'];
+                            break;
+                        }
+                    }
+
+                    // payload: expiration index, call?, buy?, strike, price, spread, quantity
+                    this.strategy[index] = { 
+                        'secid': secid,
+                        'opened': false,
+                        'index': payload[0],
+                        'expiration': expirationEpoch,
+                        'dte': Math.round((expirationEpoch - this.currentEpoch) / (1000 * 60 * 60 * 24)),
+                        'call?': payload[1],
+                        'buy?': payload[2],
+                        'strike': payload[3],
+                        'open_price': payload[4],
+                        'spread': payload[5],
+                        'quantity': payload[6],
+                        'greeks': greeks,
+                        'ev': ev,
+                        'close_price': closePrice
+                    }
+                }
+
+                let pnl;
+                if (this.strategy[index]['close_price'].length === 0) pnl = '';
+                else {
+                    pnl = parseFloat(this.strategy[index]['close_price']) - this.strategy[index]['open_price'];
+                    if (!this.strategy[index]['buy?']) pnl = -pnl;
+                }
+                this.strategy[index]['pnl'] = pnl;
+            }
+            this.payoffUpdate();
+            this.positionsChanged += 1;
+        },
+        execute() {
+            let position = [];
+            let count = 0;
+            for (let j=0; j<this.strategy.length; j++) {
+                const leg = this.strategy[j];
+                if (leg.length === 0 || leg['quantity'] === 0) continue;
+
+                position[count] = {
+                    'secid': leg['secid'],
+                    'opened': true,
+                    'index': leg['index'],
+                    'expiration': leg['expiration'],
+                    'dte': leg['dte'],
+                    'call?': leg['call?'],
+                    'buy?': leg['buy?'],
+                    'strike': leg['strike'],
+                    'open_epoch': this.currentEpoch,
+                    'open_price': leg['open_price'],
+                    'spread': leg['spread'],
+                    'quantity': leg['quantity'],
+                    'greeks': leg['greeks'],
+                    'asset_price@open': this.lastPrice,
+                    'closed': false,
+
+                    'ev': leg['ev'],
+                    'close_price': leg['close_price'],
+                    'pnl': leg['pnl'],
+                };
+                count += 1;
+            }
+            this.$store.dispatch('candles/addPositions', position);
+            this.positionExecuted += 1;
+        },
+        closePosition() {
+
+        },
+        payoffUpdate() {
+            console.log('OS: payoffUpdate');
+
             this.payoffCurve= { datasets: [{
                     type: 'line',
                     label: 'P&L @ expiration',
@@ -241,115 +353,74 @@ export default {
                     pointStyle: "circle"
             } ]};
 
-            if (!this.optionsTables || this.optionsTables.length === 0) {
-                return;
-            }
+            const eveningTime = this.getTimeEpoch(this.currentEpoch, "18:50");
 
-            // payload: expiration index, call?, buy?, strike, price, spread, quantity
-            let K, premium;
-            if (payload.length === 0 || payload[6] === 0) this.strategy[index] = [];
-            else if (index === 4) {
-                this.strategy[index] = [payload[0], 0, 'Futures', payload[2], '', payload[4], 0, payload[6], 
-                                        0, 1, 0, 0, 0, 0, payload[1]];
-            } else {
-                K = parseFloat(payload[3]);
-                premium = parseFloat(payload[4]);
-
-                const expirationEpoch = this.optionsTables[payload[0]]['expirationEpoch'];
-                const optionTime = (expirationEpoch - this.currentEpoch) / (1000 * 60 * 60 * 24 * 365);
-                let greeks;
-                if (premium > GBS.black_76(payload[1] ? 'c' : 'p', this.lastPrice, K, optionTime, 0, 0.005)[0]) {
-                    const v = GBS.euro_implied_vol_76(payload[1] ? 'c' : 'p', this.lastPrice, K, optionTime, 0, premium);
-                    greeks = GBS.black_76(payload[1] ? 'c' : 'p', this.lastPrice, K, optionTime, 0, v);
-                    greeks[0] = v;
-                }
-                else {
-                    greeks = GBS.black_76(payload[1] ? 'c' : 'p', this.lastPrice, K, optionTime, 0, 0.005);
-                    greeks[0] = 0.005;
-                }
-
-                if (!payload[2]) {
-                    for (let i=1; i<greeks.length; i++) {
-                        greeks[i] = - greeks[i];
-                    }
-                }
-
-                const nameArray = this.optionsDescriptionArray[payload[0]][1].split('_');
-                const secid = nameArray[0] + payload[3] + (payload[1] ? nameArray[1] : nameArray[2]);
-            
-                let times = [];
-                for (let i = 0; i < this.payoffDays; i++) {
-                    const t = (expirationEpoch - this.payoffEpochs[i]) / (1000 * 60 * 60 * 24 * 365);
-                    if (t <= 0) break;
-                    times.push(t);
-                }
-
-                this.strategy[index] = [secid, ...payload, ...greeks, optionTime * 365, ...times];
-            }
-
-            // strategy[0..4] :
-            // secid, expiration index, call?, buy?, strike, price, spread, quantity,
-            // volatility, delta, gamma, theta, vega, rho, dte, 
-            // t for evening clearings, t + 1d, t + 2d, ....
-
-            let x, leg, quantity, xz;
-            this.payoffData = new Array(this.payoffDays + 1);
-            let payoffZerosData = new Array(this.payoffDays + 1);
-            for (let d=0; d<this.payoffDays+1; d++) {
-                this.payoffData[d] = [];
+            let x, xz;
+            let payoffData = new Array(2);
+            let payoffZerosData = new Array(2);
+            for (let d=0; d<2; d++) {
+                payoffData[d] = [];
                 payoffZerosData[d] = [];
             }
-            let linePNL = [];
             for (let i=0; i<this.allStrikes.length; i++) {
                 x = parseFloat(this.allStrikes[i]);
 
-                let payoff = new Array(this.payoffDays + 1);
-                for (let d=0; d<this.payoffDays+1; d++) payoff[d] = 0;
-
+                let payoff = [0, 0];
                 for (let j=0; j<this.strategy.length; j++) {
-                    leg = this.strategy[j];
-                    if (leg.length === 0 || leg[7] === 0) continue;
+                    const position = this.strategy[j];
+                    if (position.length === 0 || position['quantity'] === 0) continue;
 
-                    K = parseFloat(leg[4]);
-                    premium = parseFloat(leg[5]);
-                    quantity = parseFloat(leg[7]);
-
-                    if (leg[2]) payoff[0] += ((Math.max(x - K, 0) - premium) * (leg[3] ? 1 : -1)) * quantity;
-                    else payoff[0] += (Math.max(K - x, 0) - premium) * (leg[3] ? 1 : -1) * quantity;
-
-                    for (let d=15; d<leg.length; d++) {
-                        let value = GBS.black_76(leg[2] ? 'c' : 'p', x, K, leg[d], 0, leg[8])[0];
-                        if (leg[3]) payoff[d-14] += ( value * (1 - leg[6]) - premium) * quantity;
-                        else payoff[d-14] += ( -value * (1 + leg[6]) + premium) * quantity;
-                    }
+                    const res = this.computePayoff(position, x, eveningTime);
+                    payoff[0] += res[0];
+                    payoff[1] += res[1];
                 }
                 
-                for (let d=0; d<this.payoffDays+1; d++) {
-                    this.payoffData[d].push({x: x, y: payoff[d]});
+                for (let j=0; j<this.positions.length; j++) {
+                    const position = this.positions[j];
+                    if (position['closed']) continue;
 
-                    if (i > 0 && this.payoffData[d][i-1]['y'] * payoff[d] < 0) {
-                        xz = (this.payoffData[d][i-1]['x'] * payoff[d] - this.payoffData[d][i-1]['y'] * x) / 
-                            (payoff[d] - this.payoffData[d][i-1]['y']);
+                    const res = this.computePayoff(position, x, eveningTime);
+                    payoff[0] += res[0];
+                    payoff[1] += res[1];
+                }
+
+                for (let d=0; d<2; d++) {
+                    payoffData[d].push({x: x, y: payoff[d]});
+
+                    if (i > 0 && payoffData[d][i-1]['y'] * payoff[d] < 0) {
+                        xz = (payoffData[d][i-1]['x'] * payoff[d] - payoffData[d][i-1]['y'] * x) / 
+                            (payoff[d] - payoffData[d][i-1]['y']);
                         payoffZerosData[d].push({x: xz, y: 0});
                     }
                 }
-                //linePNL.push([x, evening]);
-                /*if (i > 0 && eveningData[i-1]['y'] * evening < 0) {
-                    xz = (eveningData[i-1]['x'] * evening - eveningData[i-1]['y'] * x) / 
-                         (evening - eveningData[i-1]['y']);
-                    eveningZerosData.push({x: xz, y: 0});
-                    linePNL.push([xz, 0]);
-                }*/
             }
 
-            this.payoffCurve['datasets'][0]['data'] = this.payoffData[0];
+            this.payoffCurve['datasets'][0]['data'] = payoffData[0];
             this.payoffCurve['datasets'][1]['data'] = payoffZerosData[0];
-            this.payoffCurve['datasets'][2]['data'] = this.payoffData[1];
+            this.payoffCurve['datasets'][2]['data'] = payoffData[1];
             this.payoffCurve['datasets'][3]['data'] = payoffZerosData[1];
-            this.positionsChanged = !this.positionsChanged;
-            this.profitChartChanged = !this.profitChartChanged;
+        },
+        computePayoff(position, x, eveningTime) {
+            const K = parseFloat(position['strike']);
+            const premium = parseFloat(position['open_price']);
+            const quantity = parseFloat(position['quantity']);
+            let payoff = [0, 0];
 
-            linePNL.sort(function(a,b){ return a[0] < b[0] ? -1 : 1; });
+            if (position['call?'] === 'F') {
+                const pnl = (x - premium) * (position['buy?'] ? 1 : -1) * quantity;
+                payoff[0] = pnl;
+                payoff[1] = pnl;
+            } else {
+                if (position['call?']) payoff[0] += ((Math.max(x - K, 0) - premium) * (position['buy?'] ? 1 : -1)) * quantity;
+                else payoff[0] = (Math.max(K - x, 0) - premium) * (position['buy?'] ? 1 : -1) * quantity;
+
+                const t = (position['expiration'] - eveningTime) / (1000 * 60 * 60 * 24 * 365);
+                const value = GBS.black_76(position['call?'] ? 'c' : 'p', x, K, t, 0, position['greeks'][0])[0];
+                if (position['buy?']) payoff[1] = ( value * (1 - position['spread']) - premium) * quantity;
+                else payoff[1] = ( -value * (1 + position['spread']) + premium) * quantity;
+            }
+
+            return payoff;
         },
         getTimeEpoch(oldEpoch, newTime) {
             const lastDate = new Date(oldEpoch);
@@ -359,7 +430,7 @@ export default {
             return lastDate.valueOf();
         },        
         onResize(event) {
-            this.width = window.innerWidth - 320;
+            this.width = window.innerWidth - 680;
             this.height = this.width * 0.22;
         },
     },
@@ -374,9 +445,29 @@ export default {
 </script>
 
 <style>
+.strategy {
+    position: relative;
+    display: grid;
+    grid-template-columns: 400px 1fr;
+    background-color: #131722;
+}
+
 .strategy-chart {
-  display: grid;
-  grid-template-columns: 40% 60%;
-  background-color: #131722;
+    display: grid;
+    grid-template-columns: 40% 60%;
+    background-color: #131722;
+    margin: 10px 0px 10px 0px;
+}
+
+.open-position-button {
+    position: absolute;
+    top: -45px;
+    right: 10px;
+}
+
+.close-position-button {
+    position: absolute;
+    top: 755px;
+    left: 135px;
 }
 </style>

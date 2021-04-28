@@ -1,9 +1,13 @@
 import axios from 'axios'
+import store from './store';
+import GBS from '../components/gbs.js'
 
 const candles = {
     namespaced: true,
 
     state: () => ({
+
+        // sidebar
         choosenBaseAsset: 'Si',
         choosenFutures: '',
         choosenFuturesDTE: 0,
@@ -12,6 +16,7 @@ const candles = {
         choosenTime: '10:00',
         currentEpoch: 0,
         
+        // candles (futures)
         fullData: { "data": [[], [], [], [], [], [], []], 
                         "KC": [[], [], [], [], [], [], []] },
         candlesData: { "data": [[], [], [], [], [], [], []], 
@@ -19,8 +24,7 @@ const candles = {
         candlesDataUpdated: false,
         lastPrice: 0,
 
-        //choosenOption: -1,
-
+        // option chain
         optionsDescriptionArray: [],
         optionsDescriptionUpdated: false,
 
@@ -28,8 +32,13 @@ const candles = {
         optionsTables: [],
         optionsDataUpdated: 0,
 
+        // historic data
         volatilityData: [],
         ivData: [],
+
+        // positions
+        positions: [],
+        positionsUpdated: false,
     }),
 
     // getters
@@ -49,13 +58,18 @@ const candles = {
             if (state.choosenDate.length != 0) commit('SET_EPOCH', _getEpoch(state.choosenDate, state.choosenTime));
 
             const ohlcv = _ohlcvSlice(state.choosenTime, state.fullData);
-            commit('LOAD_CANDLES_DATA', ohlcv[0]);
+            commit('SET_CANDLES_DATA', ohlcv[0]);
             commit('SET_LAST_PRICE', ohlcv[1]);
 
-            for (let i=0; i<state.optionsDataUpdated.length; i++) {
+            for (let i=0; i<state.optionsData.length; i++) {
                 dispatch("searchOptionIndex", i);
             }
             commit("SET_OPTION_DATA_UPDATED");
+
+            for (let i=0; i<state.positions.length; i++) {
+                dispatch("updatePosition", i)
+            }
+            commit("SET_POSITIONS_UPDATED");
         },
         setFutures({ commit }, futures) {
             commit('SET_FUTURES', futures);
@@ -165,41 +179,124 @@ const candles = {
                         }
                         dispatch("optionError", selected);*/
                     });
+            }
+        },
+        searchOptionIndex({ state, commit }, selected) {
+            if (!state.optionsData[selected] || state.optionsData[selected].length === 0) return;
+            const index = _findOptionIndex(state.optionsData[selected], state.currentEpoch);
+
+            const timezone = new Date(1970, 0, 1).getTime();
+            const firstTradingEpoch = new Date(state.optionsDescriptionArray[selected][4]).valueOf() + timezone;
+            let lastTradingEpoch = new Date(state.optionsDescriptionArray[selected][5]).valueOf() + timezone;
+            const tradingDays = (lastTradingEpoch - firstTradingEpoch) /(1000 * 60 * 60 * 24);
+            if (tradingDays > 30 && state.choosenBaseAsset.startsWith("Si")) lastTradingEpoch += 14 * 60 * 60 * 1000;
+            else  lastTradingEpoch += 18 * 60 * 60 * 1000 + 50 * 60 * 1000;
+
+            commit("SET_OPTION_TABLE", [selected, state.optionsData[selected][index], lastTradingEpoch]);
+        },
+        optionError({ commit }, selected) {
+            commit('SET_VOLATILITY_DATA', []);
+            commit('SET_IV_DATA', []);
+            commit('SET_OPTION_DATA', [selected, []]);
+            commit("SET_OPTION_TABLE", [selected, []]);
+            commit("SET_OPTION_DATA_UPDATED");
+        },
+
+        addPositions({ state, commit }, newPositions) {
+            if (state.positions.length === 0) {
+                commit("SET_POSITIONS", newPositions);
+                commit("SET_POSITIONS_UPDATED");
+                return;
+            }
+
+            for (let a=0; a < newPositions.length; a++) {
+                let newPosition = newPositions[a];
+                for (let i=0; i < state.positions.length; i++) {
+                    let oldPosition = state.positions[i];
+                    if (oldPosition['closed']) continue;
+                    if (newPosition['secid'] != oldPosition['secid']) continue;
+
+                    // same direction
+                    // just add new position
+                    if (newPosition['buy?'] === oldPosition['buy?']) break;
+
+                    // new quantity <= old quantity
+                    // [close | partially close] old position
+                    if (newPosition['quantity'] <= oldPosition['quantity']) { 
+                        commit("CLOSE_POSITION", [i, newPosition]);
+                        newPosition['quantity'] = 0;
+                        break;
+                    }
+
+                    // new quantity >= old quantity
+                    // close old position, continue search
+                    commit("CLOSE_POSITION", [i, newPosition]);
+                    newPosition['quantity'] -= oldPosition['quantity'];
                 }
-            },
-            searchOptionIndex({ state, commit }, selected) {
-                if (!state.optionsData[selected] || state.optionsData[selected].length === 0) return;
-                const index = _findOptionIndex(state.optionsData[selected], state.currentEpoch);
+                if (newPosition['quantity'] > 0) { // add new position
+                    commit("ADD_POSITION", newPosition);
+                }
+            }
+            console.log(state.positions);
+            commit("SET_POSITIONS_UPDATED");
+        },
+        updatePosition({ state, commit }, index){
+            let position = state.positions[index];
+            if (position['closed']) return;
 
-                const timezone = new Date(1970, 0, 1).getTime();
-                const firstTradingEpoch = new Date(state.optionsDescriptionArray[selected][4]).valueOf() + timezone;
-                let lastTradingEpoch = new Date(state.optionsDescriptionArray[selected][5]).valueOf() + timezone;
-                const tradingDays = (lastTradingEpoch - firstTradingEpoch) /(1000 * 60 * 60 * 24);
-                if (tradingDays > 30 && state.choosenBaseAsset.startsWith("Si")) lastTradingEpoch += 14 * 60 * 60 * 1000;
-                else  lastTradingEpoch += 18 * 60 * 60 * 1000 + 50 * 60 * 1000;
+            let greeks, ev, closePrice, pnl;
+            if (position['call?'] != 'F') {
+                const t = (position['expiration'] - state.currentEpoch) / (1000 * 60 * 60 * 24 * 365);
+                const K = position['strike'];
+                if (position['open_price'] > GBS.black_76(position['call?'] ? 'c' : 'p', state.lastPrice, K, t, 0, 0.005)[0]) {
+                    const v = GBS.euro_implied_vol_76(position['call?'] ? 'c' : 'p',state.lastPrice, K, t, 0, position['open_price']);
+                    greeks = GBS.black_76(position['call?'] ? 'c' : 'p', state.lastPrice, K, t, 0, v);
+                    greeks[0] = v;
+                } else {
+                    greeks = GBS.black_76(position['call?'] ? 'c' : 'p', state.lastPrice, K, t, 0, 0.005);
+                    greeks[0] = 0.005;
+                }
+                if (!position['buy?']) {
+                    for (let i=1; i<greeks.length; i++) {
+                        greeks[i] = - greeks[i];
+                    }
+                }
+                ev = position['open_price'] - (position['call?'] ? 
+                        Math.max(0, state.lastPrice - position['strike']) : 
+                        Math.max(0, position['strike'] - state.lastPrice));
+                if (!position['buy?']) ev = -ev;
 
-                commit("SET_OPTION_TABLE", [selected, state.optionsData[selected][index], lastTradingEpoch]);
-            },
-            optionError({ commit }, selected) {
-                commit('SET_VOLATILITY_DATA', []);
-                commit('SET_IV_DATA', []);
-                commit('SET_OPTION_DATA', [selected, []]);
-                commit("SET_OPTION_TABLE", [selected, []]);
-                commit("SET_OPTION_DATA_UPDATED");
-            },
+                const table = state.optionsTables[position['index']]['option_table'];
+                for (let i = 0; i < table.length; i++) {
+                    if (table[i]['strike'] === position['strike']) {
+                        if (position['call?']) closePrice = position['buy?'] ? table[i]['call_bid'] : table[i]['call_ask'];
+                        else closePrice = position['buy?'] ? table[i]['put_bid'] : table[i]['put_ask'];
+                        break;
+                    }
+                }
+            } else {
+                greeks = [0, 1, 0, 0, 0]
+                ev = '';
+                closePrice = state.lastPrice;
+            }
 
+            if (closePrice.length === 0) pnl = '';
+            else {
+                pnl = parseFloat(closePrice) - position['open_price'];
+                if (!position['buy?']) pnl = -pnl;
+            }
 
+            commit('UPDATE_POSITION', [index, greeks, ev, closePrice, pnl]);
+        }
 
     },
     
     // mutations
     mutations: {
         SET_BASE_ASSET(state, baseAsset) {
-            console.log("set BA "+baseAsset);
             state.choosenBaseAsset = baseAsset;
         },
         SET_DATE(state, date) {
-            console.log("set date "+date);
             state.choosenDate = date;
         },
         SET_TIME(state, time) {
@@ -207,11 +304,9 @@ const candles = {
             state.choosenTime = time;
         },
         SET_EPOCH(state, epoch) {
-            console.log("set epoch "+epoch);
             state.currentEpoch = epoch;
         },
         SET_FUTURES(state, futures) {
-            console.log("set futures "+futures);
             state.choosenFutures = futures[0];
             state.choosenFuturesDTE = futures[1];
         },
@@ -223,18 +318,15 @@ const candles = {
             state.candlesDataUpdated = !state.candlesDataUpdated;
         },
         SET_LAST_PRICE(state, price) {
-            console.log("set last price "+price);
             state.lastPrice = price;
         },
 
         SET_OPTION_DESCRIPTION(state, data) {
-            console.log("set description "+data);
             state.optionsDescriptionArray = data;
             state.optionsDescriptionUpdated = !state.optionsDescriptionUpdated;
         },
 
         SET_OPTION_DATA(state, args) {
-            console.log("set option data "+args[0]);
             if (state.optionsDescriptionArray.length === 0) {
                 state.optionsData = [];
                 return;
@@ -245,7 +337,6 @@ const candles = {
             state.optionsData[args[0]] = args[1];
         },
         SET_OPTION_TABLE(state, args) {
-            console.log("set option table "+args[0]);
             if (state.optionsDescriptionArray.length === 0) {
                 state.optionsTables = [];
                 return;
@@ -281,6 +372,66 @@ const candles = {
             }
             state.ivData = data;
         },
+
+        SET_POSITIONS(state, data) {
+            state.positions = data;
+        },
+        SET_POSITIONS_UPDATED(state) {
+            console.log("set positions uppdated");
+            state.positionsUpdated = !state.positionsUpdated;
+        },
+        ADD_POSITION(state, data) {
+            state.positions.push(data);
+        },
+        CLOSE_POSITION(state, args) {
+            const index = args[0];
+            let closingPosition = args[1];
+            
+            // full close
+            if (state.positions[index]['quantity'] <= closingPosition['quantity']) {
+                state.positions[index]['closed']  = true;
+                state.positions[index]['close_epoch'] = closingPosition['open_epoch'];
+                state.positions[index]['close_price'] = closingPosition['open_price'];
+                state.positions[index]['greeks'] = closingPosition['greeks'];
+                state.positions[index]['asset_price@close'] = closingPosition['asset_price@open'];
+                state.positions[index]['pnl'] = (state.positions[index]['close_price'] - 
+                                    state.positions[index]['open_price']) * state.positions[index]['quantity'];
+                if (!state.positions[index]['buy?']) state.positions[index]['pnl'] = -state.positions[index]['pnl'];
+            } else { // partial close
+                let position = {
+                    'secid': state.positions[index]['secid'],
+                    'index': state.positions[index]['index'],
+                    'expiration': state.positions[index]['expiration'],
+                    'dte': state.positions[index]['dte'],
+                    'call?': state.positions[index]['call'],
+                    'buy?': state.positions[index]['buy'],
+                    'strike': state.positions[index]['strike'],
+                    'open_epoch': state.positions[index]['open_epoch'],
+                    'open_price': state.positions[index]['open_price'],
+                    'spread': state.positions[index]['spread'],
+                    'quantity': closingPosition['quantity'],
+                    'asset_price@open': state.positions[index]['asset_price@open'],
+                    'closed': true,
+                    'close_epoch': closingPosition['open_epoch'],
+                    'close_price': closingPosition['open_price'],
+                    'greeks': closingPosition['greeks'],
+                    'asset_price@close': closingPosition['asset_price@open'],
+                    'pnl': (closingPosition['open_price'] - 
+                                        state.positions[index]['open_price']) * closingPosition['quantity']
+                };
+                if (!position['buy?']) position['pnl'] = -position[index]['pnl'];
+                state.positions[index]['quantity'] -= closingPosition['quantity'];
+                state.posiitons.push(position);
+            }
+        },
+        //commit('UPDATE_POSTION', [index, greeks, ev, closePrice, pnl]);
+        UPDATE_POSITION(state, args) {
+            const index = args[0];
+            state.positions[index]['greeks'] = args[1];
+            state.positions[index]['ev'] = args[2];
+            state.positions[index]['close_price'] = args[3];
+            state.positions[index]['pnl'] = args[4];
+        }
     },
 }
 

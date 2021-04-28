@@ -12,17 +12,19 @@
 </template>
 
 <script>
+import GBS from './gbs.js'
+
 export default {
     name: "PositionsTable",
     components: {},
-    props: ["prices", "strategy", "dataChanged"],
+    props: ["optionPrices", "strategy", "dataChanged"],
     data() {
         return {
             fields: [
                 { key: 'secid', label: 'Security' },  // Si76000BCB1
+                { key: 'opened', label: 'Opened' },  // Yes 
                 { key: 'type', label: 'Type' },    // Call | Put | Futures
-                { key: 'direction', label: 'Action' },  // Buy | Write | Sell
-                //{ key: 'expiration', label: 'DOE' }, // 15.04.2021 [1]
+                { key: 'side', label: 'Side' },  // Buy | Write | Sell
                 { key: 'strike', label: 'Strike' }, // 76000
                 { key: 'iv', label: 'IV' }, // 17.23
                 { key: 'delta', label: 'Delta' }, // 0.432
@@ -31,7 +33,7 @@ export default {
                 { key: 'vega', label: 'Vega' }, // 0.123
                 { key: 'ev', label: 'EV' }, // 1000
                 { key: 'dte', label: 'DTE' }, // 6
-                { key: 'open_price', label: 'Open' }, // 377 | (340)
+                { key: 'open_price', label: 'Price' }, // 377 | (340)
                 { key: 'quantity', label: 'Quantity' }, // 1
                 { key: 'close_price', label: 'Close' }, // 
                 { key: 'pnl', label: 'P&L' }, // (10)
@@ -40,73 +42,49 @@ export default {
         }
     },
     computed: {
+        currentEpoch() { return this.$store.state.candles.currentEpoch; },
         lastPrice() { return this.$store.state.candles.lastPrice; },
+        positions() { return this.$store.state.candles.positions; },
+        positionsUpdated() { return this.$store.state.candles.positionsUpdated; },
     },
     watch: {
-        dataChanged(newData, oldData) {
+        dataChanged(newData, oldData) { this.createPositionsTable(); },
+        //positionsUpdated(newData, oldData) { this.createPositionsTable(); },
+    },
+    methods: {
+        createPositionsTable() {
+
+            console.log("PT: createPositionsTable");
+
             this.positionsTable = [];
-            let summary = {'secid': '', 'type': '', 'direction': '', 'strike': '', 'iv': '', 
-                           'delta': 0, 'gamma': 0, 'theta': 0, 'vega': 0, 'ev': 0, 'dte': '',
-                           'open_price': 0, 'quantity': '', 'close_price': '', 'pnl': ''};
+            let summary = {'secid': '', 'opened':'', 'type': '', 'side': '', 'strike': '', 'iv': '', 
+                           'delta': 0, 'gamma': 0, 'theta': 0, 'vega': 0, 'ev': '', 'dte': '',
+                           'open_price': '', 'quantity': '', 'close_price': '', 'pnl': 0};
+
+            for (let i = 0; i < this.positions.length; i++) {
+                let position = this.positions[i];
+                if (position['closed']) continue;
+
+                this.addLine(position);
+
+                summary['delta'] += position['greeks'][1] * position['quantity'];
+                summary['gamma'] += position['greeks'][2] * position['quantity'];
+                summary['theta'] += position['greeks'][3] / 365 * position['quantity'];
+                summary['vega'] += position['greeks'][4] * position['quantity'];
+                if (position['pnl'] && position['pnl'].length != 0) summary['pnl'] += position['pnl'];
+            }
+
             for (let i = 0; i < this.$props.strategy.length; i++) {
-                let leg = this.$props.strategy[i];
-                if (!leg || leg.length === 0) continue;
+                let position = this.$props.strategy[i];
+                if (!position || position.length === 0 || position['quantity'] === 0) continue;
 
-                // strategy[0..4] :
-                // secid, expiration index, call?, buy?, strike, price, spread, quantity
-                // volatility, delta, gamma, theta, vega, rho, dte, t for evening clearings
+                this.addLine(position);
 
-                if (i === 4) {
-                    this.positionsTable.push({ 
-                        "secid": leg[0].startsWith('si') ? 'Si' + leg[0].toUpperCase().substr(2) : leg[0].toUpperCase(),
-                        "type": "Futures",
-                        "direction": leg[3] ? "Buy" : "Sell",
-                        "strike": '',
-                        "iv": '',
-                        "delta": '1.0',
-                        "gamma": '0.0',
-                        "theta": '0.0',
-                        "vega": '0.0',
-                        "ev": '0.0',
-                        "dte": leg[14],
-                        "open_price": leg[3] ? parseFloat(leg[5]) : -parseFloat(leg[5]),
-                        "quantity": leg[7],
-                        "close_price": '',
-                        "pnl": ''
-                    });
-
-                    summary['delta'] += 1.0;
-                    summary['open_price'] += leg[3] ? parseFloat(leg[5]) : -parseFloat(leg[5]);
-
-                    continue;
-                }
-
-                const ev = leg[5] - (leg[2] ? Math.max(0, this.lastPrice - leg[4]) : Math.max(0, leg[4] - this.lastPrice));
-
-                this.positionsTable.push({ 
-                    "secid": leg[0].startsWith('si') ? 'Si' + leg[0].toUpperCase().substr(2) : leg[0].toUpperCase(),
-                    "type": leg[2] ? "Call" : "Put",
-                    "direction": leg[3] ? "Buy" : "Write",
-                    "strike": leg[4],
-                    "iv": (leg[8] * 100).toFixed(2),
-                    "delta": leg[9].toFixed(3),
-                    "gamma": Math.abs(leg[10]) > 0.01 ? leg[10].toFixed(3) : leg[10].toExponential(2),
-                    "theta": Math.abs(leg[11]/365) > 1 ? (leg[11]/365).toFixed(0) : (leg[11]/365).toFixed(3),
-                    "vega": Math.abs(leg[12]) > 1 ? leg[12].toFixed(0) : leg[12].toFixed(3),
-                    "ev": leg[3] ? ev : -ev,
-                    "dte": leg[14].toFixed(0),
-                    "open_price": leg[3] ? parseFloat(leg[5]) : -parseFloat(leg[5]),
-                    "quantity": leg[7],
-                    "close_price": '',
-                    "pnl": ''
-                });
-
-                summary['delta'] += leg[9];
-                summary['gamma'] += leg[10];
-                summary['theta'] += leg[11] / 365;
-                summary['vega'] += leg[12];
-                summary['ev'] += leg[3] ? ev : -ev;
-                summary['open_price'] += leg[3] ? parseFloat(leg[5]) : -parseFloat(leg[5]);
+                summary['delta'] += position['greeks'][1] * position['quantity'];
+                summary['gamma'] += position['greeks'][2] * position['quantity'];
+                summary['theta'] += position['greeks'][3] / 365 * position['quantity'];
+                summary['vega'] += position['greeks'][4] * position['quantity'];
+                if (position['pnl'] && position['pnl'].length != 0) summary['pnl'] += position['pnl'];
             }
 
             summary['delta'] = summary['delta'].toFixed(3);
@@ -118,8 +96,28 @@ export default {
 
             this.$refs.ptable.refresh();
         },
-    },
-    methods: {
+        addLine(position) {
+            let greeks = position['greeks'];
+            this.positionsTable.push({
+                "secid": position['secid'].startsWith('si') ? 
+                        'Si' + position['secid'].toUpperCase().substr(2) : position['secid'].toUpperCase(),
+                "opened": position['opened'] ? "Yes" : "",
+                "type": position['call?'] === 'F' ? 'Futures' : position['call?'] ? "Call" : "Put",
+                "side": position['buy?'] ? "Buy" : position['call?'] === 'F' ? "Sell" : "Write",
+                "strike": position['strike'],
+                "iv": position['call?'] === 'F' ? '' : (greeks[0] * 100).toFixed(2),
+                "delta": greeks[1].toFixed(3),
+                "gamma": Math.abs(greeks[2]) > 0.01 ? greeks[2].toFixed(3) : greeks[2].toExponential(2),
+                "theta": Math.abs(greeks[3]/365) > 1 ? (greeks[3]/365).toFixed(0) : (greeks[3]/365).toFixed(3),
+                "vega": Math.abs(greeks[4]) > 1 ? greeks[4].toFixed(0) : greeks[4].toFixed(3),
+                "ev": position['ev'],
+                "dte": position['dte'].toFixed(0),
+                "open_price": position['buy?'] ? parseFloat(position['open_price']) : -parseFloat(position['open_price']),
+                "quantity": position['quantity'],
+                "close_price": position['close_price'],
+                "pnl": position['pnl']
+            });
+        },
 
     }
 }

@@ -4,7 +4,6 @@
       id="1m"
       :title="securityName"
       :scale="0"
-      :pnl="pnl"
       :width="cbox_width"
       :height="cbox_height"
     >
@@ -13,7 +12,6 @@
       id="H"
       :title="securityName"
       :scale="5"
-      :pnl="pnl"
       :width="cbox_width"
       :height="cbox_height"
     >
@@ -22,7 +20,6 @@
       id="D"
       :title="securityName"
       :scale="6"
-      :pnl="pnl"
       :width="cbox_width"
       :height="cbox_height"
     >
@@ -35,7 +32,6 @@ import Candlechart from "./CandleChart.vue";
 
 export default {
   name: "Multichart",
-  props: ["pnl"],
   components: {
     Candlechart,
   },

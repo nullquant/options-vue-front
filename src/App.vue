@@ -5,12 +5,8 @@
     </aside>
     <main class="main">
       <div>
-        <Multichart
-          :pnl="linePNL"
-        />
-        <Options
-          @pnl="updatePNL"
-        />
+        <Multichart />
+        <Options />
       </div>
     </main>
   </div>
@@ -46,8 +42,7 @@ export default {
   display: grid;
   grid-template-columns: 280px 1fr;
   grid-template-rows: 1fr;
-  grid-template-areas:
-    "sidenav main";
+  grid-template-areas: "sidenav main";
   height: 100vh;
 }
 

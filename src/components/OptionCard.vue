@@ -92,7 +92,7 @@
 export default {
     name: "OptionCard",
     emits: ["quantity"],
-    props: ["title", "expirationArray", "prices", "dataChanged"],
+    props: ["title", "expirationArray", "prices", "dataChanged", "clear"],
     data() {
         return {
             checkedCall: true,
@@ -119,6 +119,9 @@ export default {
         },
         quantity(newData, oldData) {
             this.sendLeg();
+        },
+        clear(newData, oldData) {
+            this.quantity = 0;
         }
     },
     methods: {
@@ -128,10 +131,21 @@ export default {
                 this.strikeArray = [{ text: 'NO DATA', value: -1, disabled: true}];
                 this.selectedStrike = -1;
             } else {
-                if (this.selectedStrike < 0) {
-                    this.strikeArray = this.prices[this.selectedExpiration][0];
-                    this.selectedStrike = this.strikeArray.length / 2 - 1;
+                let oldStrike;
+                if (this.selectedStrike < 0) oldStrike = -1;
+                else oldStrike = this.strikeArray[this.selectedStrike]['text'];
+
+                const table = this.prices[this.selectedExpiration][0];
+                let newStrikeArray = [];
+                let newIndex = -1;
+                for (let x = 0; x < table.length; x++) {
+                    newStrikeArray.push({text: table[x]['strike'], value: x});
+                    if (table[x]['strike'] === oldStrike) newIndex = x;
                 }
+
+                this.strikeArray = newStrikeArray;
+                if (newIndex < 0) this.selectedStrike = this.strikeArray.length / 2 - 1;
+                else this.selectedStrike = newIndex;
             }
             this.changeStrike();
         },
@@ -164,14 +178,14 @@ export default {
             var bid, mid, ask, bidValue, askValue, cp;
 
             if (this.checkedCall) {
-                bid = this.prices[this.selectedExpiration][1][this.selectedStrike]['call_bid'];
-                mid = this.prices[this.selectedExpiration][1][this.selectedStrike]['call_mid'];
-                ask = this.prices[this.selectedExpiration][1][this.selectedStrike]['call_ask'];
+                bid = this.prices[this.selectedExpiration][0][this.selectedStrike]['call_bid'];
+                mid = this.prices[this.selectedExpiration][0][this.selectedStrike]['call_mid'];
+                ask = this.prices[this.selectedExpiration][0][this.selectedStrike]['call_ask'];
                 cp = -10;
             } else {
-                bid = this.prices[this.selectedExpiration][1][this.selectedStrike]['put_bid'];
-                mid = this.prices[this.selectedExpiration][1][this.selectedStrike]['put_mid'];
-                ask = this.prices[this.selectedExpiration][1][this.selectedStrike]['put_ask'];
+                bid = this.prices[this.selectedExpiration][0][this.selectedStrike]['put_bid'];
+                mid = this.prices[this.selectedExpiration][0][this.selectedStrike]['put_mid'];
+                ask = this.prices[this.selectedExpiration][0][this.selectedStrike]['put_ask'];
                 cp = -20;
             }
 
@@ -210,8 +224,8 @@ export default {
         sendLeg() {
             var strike;
             if (!this.$props.prices || !this.$props.prices[this.selectedExpiration] ||
-                !this.prices[this.selectedExpiration][1].length === 0) strike = '';
-            else strike = this.prices[this.selectedExpiration][1][this.selectedStrike]['strike'];
+                !this.prices[this.selectedExpiration][0].length === 0) strike = '';
+            else strike = this.prices[this.selectedExpiration][0][this.selectedStrike]['strike'];
             this.$emit("quantity", [this.selectedExpiration, 
                                     this.checkedCall,
                                     this.checkedBuy,
@@ -237,6 +251,7 @@ export default {
     border: 1px solid #434651;
     background-clip: border-box;
     border-radius: 10px;
+    margin: 10px 10px 0px 10px;
 }
 .o-card-body {
     flex: 1 1 auto;
